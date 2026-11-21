@@ -1,6 +1,6 @@
 // /api/catalog : the sticker packs the shop owner adds from /admin (shown live in the shop and the designer).
 // GET (public) -> { packs: [...] }. POST (admin) {action}: add | sheet | del-sticker | del-pack.
-import { put, list, del } from '@vercel/blob';
+import { put, list, del } from './_blob.js';
 import { json, isAdmin, latest, limited } from './_lib.js';
 
 const CATS = ['xl', 'mix', 'programmers', 'gaming', 'football', 'anime', 'cartoons', 'streetwear', 'quotes', 'girly', 'marvel', 'sneakers', 'cars', 'moto', 'dark'];

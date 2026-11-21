@@ -1,5 +1,5 @@
 // POST /api/order : a customer places an order. The server prices it from its own list, saves it, tells the shop.
-import { put } from '@vercel/blob';
+import { put } from './_blob.js';
 import { json, newId, secret, saveOrder, pushAll, priceOrder, limited, ghPhone, SITE } from './_lib.js';
 import PR from './_prices.js';
 

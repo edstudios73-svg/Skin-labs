@@ -1,5 +1,5 @@
 // Shared helpers for the Skin Lab order backend (Vercel Functions + Vercel Blob).
-import { list, put, del } from '@vercel/blob';
+import { list, put, del } from './_blob.js';
 import { timingSafeEqual } from 'crypto';
 
 // Order lifecycle. Payment is never a status staff can set: only a verified Paystack payment marks an order paid.

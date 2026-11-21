@@ -1,5 +1,5 @@
 // /api/subscribe : GET -> the public key; POST {sub} -> remember this phone; DELETE {endpoint} -> forget it (any staff login; the printer's phone only gets price-free alerts).
-import { put, list, del } from '@vercel/blob';
+import { put, list, del } from './_blob.js';
 import { json, role, limited } from './_lib.js';
 import { createHash } from 'crypto';
 

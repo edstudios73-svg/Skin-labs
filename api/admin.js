@@ -3,7 +3,7 @@
 // GET  ?a=orders | payments[&all=1] | tickets | reviews
 // POST {a: status | note | delete | sync | refund | push-test | ticket | review, ...}
 // Every change is written into the record's history with who made it and when.
-import { list, del } from '@vercel/blob';
+import { list, del } from './_blob.js';
 import { settings, saveSettings, price, cost } from './_quote.js';
 import PR from './_prices.js';
 import { json, role, limited, forPrinter, adminName, findOrder, saveOrder, STATUSES, FLOW, payOn, paystack, confirmPayment, pushAll, allOrders, loadDocs, loadDoc, saveDoc } from './_lib.js';

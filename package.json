@@ -2,6 +2,6 @@
   "name": "skin-lab",
   "private": true,
   "type": "module",
-  "description": "Skin Lab shop: static site + order backend (Vercel Functions, Vercel Blob)",
-  "dependencies": { "@vercel/blob": "2.8.2", "web-push": "3.6.7" }
+  "description": "Skin Lab shop: static site + order backend (Vercel Functions, Supabase Storage)",
+  "dependencies": { "web-push": "3.6.7" }
 }
