@@ -4,7 +4,7 @@
 // GET  ?a=popular  -> best-selling packs, counted from real orders (no names, no numbers)
 // POST {a:'support', topic, order?, name, phone, msg}  -> support ticket, reference SUP-XXXXX
 // POST {a:'review', id, rating, text, permit, photo?, fb?} -> review of a delivered order (moderated before it shows)
-import { put } from '@vercel/blob';
+import { put } from './_blob.js';
 import { settings, price } from './_quote.js';
 import { json, findOrder, saveOrder, pushAll, limited, ghPhone, rid, saveDoc, loadDoc, loadDocs, allOrders } from './_lib.js';
 
