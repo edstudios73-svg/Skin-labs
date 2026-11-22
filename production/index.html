@@ -56,7 +56,8 @@ textarea,input[type=text],input[type=password]{width:100%;background:#000;border
 .tabsn{display:flex;gap:2px;margin-left:18px}.tabsn a{padding:8px 12px;font-size:14px;color:#bbb;text-decoration:none}.tabsn a.on{color:#fff;box-shadow:inset 0 -1px 0 #fff}
 @media (max-width:760px){.tabsn{display:none}.who .lbl{display:none}}
 .srch{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}.srch input{flex:1 1 260px}
-.tl{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);text-decoration:none}.tl:hover{background:#0b0b0b}.tl .m{color:var(--mute);font-size:13px}
+.tli{width:78px;height:54px;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(0,0,0,.5))}
+.tl{display:grid;grid-template-columns:78px 1fr auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);text-decoration:none}.tl:hover{background:#0b0b0b}.tl .m{color:var(--mute);font-size:13px}
 .pill.verified{border-color:var(--ok);color:var(--ok)}.pill.draft{border-color:var(--warn);color:var(--warn)}.pill.none{color:#888;border-color:#444}
 .ed{display:grid;gap:14px}@media (min-width:1100px){.ed{grid-template-columns:420px 1fr;align-items:start}}
 .sf{border:1px solid var(--line);padding:16px}.sf h3{display:flex;justify-content:space-between;align-items:center;font:400 22px 'Instrument Serif',serif;margin-bottom:10px}
@@ -66,6 +67,7 @@ textarea,input[type=text],input[type=password]{width:100%;background:#000;border
 .prev{border:1px solid var(--line);background:#0a0a0a;padding:14px;position:sticky;top:80px}.prev svg{width:100%;height:auto;display:block;background:#141414}
 .chk2{font-size:13px;margin-top:10px}.chk2 li{margin-left:18px}.chk2 .e{color:var(--bad)}.chk2 .w{color:var(--warn)}
 .dims{width:100%;border-collapse:collapse;font-size:13px}.dims td,.dims th{text-align:left;padding:7px 4px;border-bottom:1px solid var(--line)}.dims th{font:400 10px 'Geist Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.f6 .cbx{display:flex!important;gap:10px;align-items:center;font-size:14px;margin-top:6px}.f6 .cbx input{width:18px!important;height:18px;flex:none;accent-color:#fff}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#fff;color:#000;padding:10px 16px;font:500 12px 'Geist Mono',monospace;letter-spacing:.06em;z-index:50}
 </style></head>
 <body><div id="app"></div><div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
@@ -93,11 +95,11 @@ function login(msg) {
   $('#pw').onkeydown = e => { if (e.key === 'Enter') $('#go').click(); };
 }
 const head = () => `<header class="top"><div class="wrap"><a class="brand" href="#" style="text-decoration:none">Skin Lab<small>Print production</small></a>
-  <nav class="tabsn"><a href="#" class="${!location.hash.startsWith('#tpl') ? 'on' : ''}">Jobs</a><a href="#tpl" class="${location.hash.startsWith('#tpl') ? 'on' : ''}">Laptop templates</a></nav>
+  <nav class="tabsn"><a href="#" class="${!/^#(tpl|settings)/.test(location.hash) ? 'on' : ''}">Jobs</a><a href="#tpl" class="${location.hash.startsWith('#tpl') ? 'on' : ''}">Laptop templates</a><a href="#settings" class="${location.hash === '#settings' ? 'on' : ''}">Cutting settings</a></nav>
   <div class="who"><span class="role ${ME_.role === 'printing' ? 'p' : ''}">${ME_.role === 'printing' ? 'Printing Administrator' : 'General Administrator'}</span><span class="lbl">${esc(ME())}</span>
   <a class="lnk" href="${ME_.role === 'printing' ? '/printer/' : '/admin/'}">${ME_.role === 'printing' ? 'Print queue' : 'Admin'}</a><button class="lnk" id="out">Sign out</button></div></div></header>`;
 async function boot() { if (!KEY()) return login(); try { ME_ = await api('?a=me'); } catch (e) { return; } route(); }
-function route() { const h = location.hash.slice(1); if (/^SL-[2-9A-Z]{5}$/.test(h)) job(h); else if (h === 'tpl') tpls(); else if (h.startsWith('tpl=')) tpl(h.slice(4)); else dash(); }
+function route() { const h = location.hash.slice(1); if (/^SL-[2-9A-Z]{5}$/.test(h)) job(h); else if (h === 'tpl') tpls(); else if (h === 'settings') settings(); else if (h.startsWith('tpl=')) tpl(h.slice(4)); else dash(); }
 addEventListener('hashchange', route);
 async function dash() {
   app.innerHTML = `${head()}<main class="wrap"><span class="lbl" style="display:block;margin-top:26px">Paid orders only · newest first</span><h1>Print <em>Production</em></h1>
@@ -171,7 +173,7 @@ async function tpls() {
   try { TPL = (await (await fetch('/api/templates/?a=list', { headers: { 'x-admin-key': KEY() } })).json()).laptops || []; } catch (e) { $('#tlist').innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
   const draw = () => { const w = TQ.toLowerCase().split(/\s+/).filter(Boolean), r = TPL.filter(l => (!TS || l.status === TS) && w.every(x => (l.brand + ' ' + l.name).toLowerCase().includes(x)));
     $('#tt').innerHTML = [['verified', 'Verified templates'], ['draft', 'Drafts to check'], ['none', 'Models with no template']].map(([k, n]) => `<div class="tile"><span class="lbl">${n}</span><b>${TPL.filter(l => l.status === k).length}</b></div>`).join('');
-    $('#tlist').innerHTML = `<p class="lbl" style="margin-bottom:8px">${r.length} model${r.length === 1 ? '' : 's'}</p>` + r.slice(0, TN).map(l => `<a class="tl" href="#tpl=${l.key}"><span><b>${esc(l.brand)} ${esc(l.name)}</b><br><span class="m">${l.scr}″ · ${l.w} × ${l.d} cm · ${l.t} mm${l.surfaces.length ? ' · ' + l.surfaces.map(s => SURF[s] || s).join(', ') : ''}</span></span>
+    $('#tlist').innerHTML = `<p class="lbl" style="margin-bottom:8px">${r.length} model${r.length === 1 ? '' : 's'}</p>` + r.slice(0, TN).map(l => `<a class="tl" href="#tpl=${l.key}"><img class="tli" src="/laptops-r/${l.key}.webp" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><span><b>${esc(l.brand)} ${esc(l.name)}</b><br><span class="m">${l.scr}″ · ${l.w} × ${l.d} cm · ${l.t} mm${l.surfaces.length ? ' · ' + l.surfaces.map(s => SURF[s] || s).join(', ') : ''}</span></span>
       <span class="pill ${l.status}">${l.status === 'none' ? 'Needs template' : l.status === 'draft' ? `Draft v${l.version}` : `Verified v${l.version}`}</span></a>`).join('') + (r.length > TN ? `<button class="btn" id="tm" style="margin-top:14px">Show more</button>` : '');
     if ($('#tm')) $('#tm').onclick = () => { TN += 60; draw(); }; };
   $('#tq').oninput = e => { TQ = e.target.value; TN = 60; draw(); }; $('#ts').onclick = e => { const b = e.target.closest('[data-s]'); if (!b) return; TS = b.dataset.s; document.querySelectorAll('#ts button').forEach(x => x.classList.toggle('on', x === b)); draw(); };
@@ -212,7 +214,7 @@ async function tpl(key) {
   let cur = 'lid';
   const draw = (check) => {
     const x = T.surfaces[cur], dis = E ? '' : 'disabled';
-    $('main').innerHTML = `<div class="jh"><div><a class="lbl" href="#tpl" style="text-decoration:none">← All laptops</a><h1>${esc(M.brand)} <em>${esc(M.name)}</em></h1>
+    $('main').innerHTML = `<div class="jh"><div><a class="lbl" href="#tpl" style="text-decoration:none">← All laptops</a><div style="display:flex;gap:18px;align-items:center"><img src="/laptops-r/${esc(M.key)}.webp" alt="" style="width:150px;height:110px;object-fit:contain" onerror="this.remove()"><h1>${esc(M.brand)} <em>${esc(M.name)}</em></h1></div>
         <span class="lbl">Catalogue: ${M.scr}″ · ${M.w} × ${M.d} cm (${M.w * 10} × ${M.d * 10} mm) · ${M.t} mm · model key ${esc(M.key)}</span></div>
         <span class="pill ${d.template ? d.template.status : 'none'}">${d.template ? `${d.template.status === 'verified' ? 'Verified' : 'Draft'} v${d.template.version}` : 'No template yet'}</span></div>
       ${!E && !d.template ? `<div class="note">${esc(d.note || 'No verified template for this model yet. Orders for it are flagged for manual verification.')}</div>` : ''}
@@ -271,6 +273,24 @@ async function download(id, name, btn) {
     } catch (e) { if (e.message === 'login') return; m.textContent = `Try ${tryN} of 3 failed: ${e.message}${tryN < 3 ? '. Retrying…' : ''}`; await new Promise(r => setTimeout(r, 1200 * tryN)); }
   }
   btn.disabled = false; btn.textContent = label; m.textContent += ' Check your connection and try again.';
+}
+// ---------- cutting / printing settings: match the files to the actual printer and cutter ----------
+async function settings() {
+  app.innerHTML = `${head()}<main class="wrap"><div class="empty">Loading…</div></main>`; $('#out').onclick = () => { ls('sl-prod', null); login(); };
+  let d; try { d = await api('?a=settings'); } catch (e) { return; }
+  const S = d.settings, E = d.canEdit, dis = E ? '' : 'disabled', F = [['cutOffset', 'Sticker cut offset (mm)', 'Distance from the artwork to the cut line'], ['spacing', 'Spacing between stickers (mm)', ''], ['margin', 'Sheet margin (mm)', 'Keeps registration marks clear'],
+    ['regSize', 'Registration mark size (mm)', ''], ['stickerMm', 'Single sticker size, long side (mm)', ''], ['xlMm', 'XL lid sticker, long side (mm)', ''], ['skinDpiMin', 'Lowest acceptable skin artwork resolution (dpi)', 'Below this a warning is shown']];
+  $('main').innerHTML = `<span class="lbl" style="display:block;margin-top:26px">Applies to every new package</span><h1>Cutting <em>settings</em></h1><p class="sub">${E ? 'Match the files to your printer and cutter. Regenerate a package after changing these.' : 'Set by the General Administrator. Ask them to change anything that does not match your cutter.'}</p>
+    <div class="grid"><section class="card"><div class="f6" style="grid-template-columns:1fr 1fr">
+      <label style="grid-column:1/-1"><span class="lbl">Cut type</span><select id="cm" ${dis}><option value="kiss" ${S.cutMode === 'kiss' ? 'selected' : ''}>Kiss cut · through the sticker only, backing stays whole</option><option value="die" ${S.cutMode === 'die' ? 'selected' : ''}>Die cut · through sticker and backing</option></select></label>
+      <label style="grid-column:1/-1"><span class="lbl">Cut line spot colour / layer name</span><input id="sp" value="${esc(S.spot)}" ${dis} placeholder="CutContour"><small class="lbl" style="text-transform:none;letter-spacing:0">Roland/Mimaki/Summa usually read “CutContour”; Graphtec “CutContour” or “Thru-cut”. Use what your RIP expects.</small></label>
+      ${F.map(([k, n, h]) => `<label><span class="lbl">${n}</span><input type="number" step="0.1" data-k="${k}" value="${S[k]}" ${dis}>${h ? `<small class="lbl" style="text-transform:none;letter-spacing:0">${h}</small>` : ''}</label>`).join('')}
+      <label class="cbx" style="grid-column:1/-1"><input type="checkbox" id="rm" ${S.regMarks ? 'checked' : ''} ${dis}> Add registration marks for print-and-cut</label></div>
+      ${E ? '<button class="btn w" id="ss" style="margin-top:14px">Save settings</button>' : ''}${S.updatedBy ? `<p class="lbl" style="margin-top:10px">Last changed by ${esc(S.updatedBy)} · ${when(S.updatedAt)}</p>` : ''}</section>
+      <section class="card"><h2>How files are made</h2><ul class="log"><li>Sticker cut lines follow each sticker's shape, ${S.cutOffset} mm outside the artwork.</li><li>Cut lines are vector paths on the “${esc(S.spot)}” layer (SVG) and spot colour (PDF).</li><li>${S.regMarks ? `Three ${S.regSize} mm registration squares in the sheet corners.` : 'No registration marks.'}</li><li>Skins and keyboards use the verified laptop template's own bleed and offset.</li></ul></section></div>`;
+  if (!E) return;
+  $('#ss').onclick = async () => { const v = { cutMode: $('#cm').value, spot: $('#sp').value, regMarks: $('#rm').checked }; document.querySelectorAll('[data-k]').forEach(i => v[i.dataset.k] = +i.value);
+    try { await api('', { a: 'settings', settings: v }); toast('Settings saved'); settings(); } catch (e) { toast(e.message); } };
 }
 boot();
 </script></body></html>

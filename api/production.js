@@ -84,7 +84,7 @@ export async function generate(base, id, by = 'System') {
     const abs = u => /^https?:/.test(u) ? u : base + u, cache = new Map();
     const assets = { pack: k => shop.PK[k], skinSrc: k => `/print/skins/${encodeURIComponent(k)}.jpg`,
       stickerSrc: c => /^XQV-/.test(c) ? `/free/${c}.webp` : shop.URL_[c] || `/hd/${encodeURIComponent(c)}.avif`,
-      fetch: async u => { u = abs(u); if (cache.has(u)) return cache.get(u); const r = await fetch(u, { signal: AbortSignal.timeout(60000) }); if (!r.ok) throw new Error(`${r.status} ${u.split('/').pop()}`); const b = Buffer.from(await r.arrayBuffer()); cache.set(u, b); return b; } };
+      fetch: async u => { u = abs(u); if (cache.has(u)) return cache.get(u); const r = await fetch(u, { signal: AbortSignal.timeout(60000) }); if (!r.ok) throw new Error(`could not load the file ${decodeURIComponent(u.split('/').slice(-2).join('/'))} (${r.status === 404 ? 'it is missing from storage' : 'error ' + r.status}). Put the file back or ask the customer to resend it, then regenerate`); const b = Buffer.from(await r.arrayBuffer()); cache.set(u, b); return b; } };
     const pk = await produce({ order: o, job, plan, base, assets, settings: (await loadDoc('production-settings')) || {} });
     const version = (job.version || 0) + 1;
     job.version = version; job.files = await storePackage(id, version, pk); job.checks = pk.checks; job.warnings = pk.warnings;
@@ -106,6 +106,17 @@ export default async function handler(req, res) {
   if (!who) return limited(req, 'login-fail', 8, 15 * 60e3) ? json(res, 429, { error: 'Too many wrong passwords. Wait 15 minutes' }) : json(res, 401, { error: 'Wrong password' });
   const isPrinter = who === 'printer', by = `${adminName(req)} (${isPrinter ? 'Printing Admin' : 'General Admin'})`, q = req.query || {}, b = req.body || {};
   if (req.method === 'GET' && q.a === 'me') return json(res, 200, { role: isPrinter ? 'printing' : 'general', login: who, canDownload: isPrinter, canManageTemplates: GENERAL.has(who) });
+  if (q.a === 'settings' || b.a === 'settings') {   // cutting / printing settings: General Admin edits, everyone reads
+    const { DEFAULTS } = await import('./_produce.js'), cur = { ...DEFAULTS, ...((await loadDoc('production-settings')) || {}) };
+    if (req.method === 'GET') return json(res, 200, { settings: cur, defaults: DEFAULTS, canEdit: GENERAL.has(who) });
+    if (!GENERAL.has(who)) return json(res, 403, { error: 'Production settings are managed by the General Administrator' });
+    const v = b.settings || {}, n = (x, lo, hi) => Number.isFinite(+x) ? Math.max(lo, Math.min(hi, +x)) : undefined;
+    const next = { ...cur, cutMode: v.cutMode === 'die' ? 'die' : 'kiss', spot: String(v.spot || cur.spot).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 30) || 'CutContour',
+      cutOffset: n(v.cutOffset, 0, 6) ?? cur.cutOffset, spacing: n(v.spacing, 1, 20) ?? cur.spacing, margin: n(v.margin, 5, 30) ?? cur.margin, regMarks: v.regMarks !== false,
+      regSize: n(v.regSize, 3, 10) ?? cur.regSize, stickerMm: n(v.stickerMm, 20, 150) ?? cur.stickerMm, xlMm: n(v.xlMm, 80, 280) ?? cur.xlMm, skinDpiMin: n(v.skinDpiMin, 72, 300) ?? cur.skinDpiMin,
+      updatedAt: Date.now(), updatedBy: by };
+    await saveDoc('production-settings', next); return json(res, 200, { settings: next });
+  }
   if (req.method === 'GET' && q.a === 'jobs') {
     const orders = (await allOrders()).filter(o => o.paid);
     const jobs = await Promise.all(orders.map(async o => { const j = await ensureJob(o), sum = summary(j, o), plan = await surfacePlan(req, j).catch(() => ({ surfaces: {} }));
