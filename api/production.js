@@ -3,12 +3,22 @@
 //   General Administrator  = owner / payments login: sees every job, its progress, files and checks. Never downloads files.
 //   Printing Administrator = printer login: everything above + downloads + moves the job through production.
 import { json, role, adminName, findOrder, saveOrder, allOrders, saveDoc, loadDoc, loadDocs, limited } from './_lib.js';
+import { templateFor, catalogue, checkTemplate } from './templates.js';
 
 export const STAGES = ['new', 'generating', 'files-ready', 'downloaded', 'printing', 'cutting', 'qc', 'completed', 'dispatch'];
 export const STAGE_NAME = { new: 'New order', generating: 'Files generating', 'files-ready': 'Files ready', downloaded: 'Downloaded', printing: 'Printing', cutting: 'Cutting', qc: 'Quality check', completed: 'Completed', dispatch: 'Ready for collection / dispatch', failed: 'Generation failed' };
 // the customer's tracking page follows production (order statuses already used by the shop)
 const ORDER_STEP = { generating: 'artwork', 'files-ready': 'artwork', downloaded: 'artwork', printing: 'printing', cutting: 'printing', qc: 'qc', completed: 'ready', dispatch: 'ready' };
 const GENERAL = new Set(['owner', 'payments']);
+export async function surfacePlan(req, job) {
+  if (!job.surfaces.length) return { model: null, template: null, surfaces: {} };
+  const { model, template } = job.laptop ? await templateFor(req, job.laptop) : { model: null, template: null };
+  const ok = template && template.status === 'verified' && checkTemplate(template, model).ok, out = {};
+  for (const s of job.surfaces) { const x = ok && template.surfaces[s];
+    out[s] = x ? { ready: true, w: x.w, h: x.h, r: x.r, bleed: x.bleed, offset: x.offset, cutouts: (x.cutouts || []).length, keys: x.keyboard ? x.keyboard.keys.length : 0 }
+      : { ready: false, why: !job.laptop ? 'Laptop model not given' : !model ? 'Model not found in the laptop catalogue' : !template ? 'No template for this model' : template.status !== 'verified' ? `Template v${template.version} is not verified` : `Template has no ${s} surface` }; }
+  return { model: model && { key: model.key, name: `${model.brand} ${model.name}`, w: model.w, d: model.d }, template: template && { version: template.version, status: template.status }, surfaces: out };
+}
 
 // What production needs to know about an order. Built from the paid order only.
 export function jobFromOrder(o) {
@@ -54,7 +64,8 @@ export default async function handler(req, res) {
   if (req.method === 'GET' && q.a === 'me') return json(res, 200, { role: isPrinter ? 'printing' : 'general', login: who, canDownload: isPrinter, canManageTemplates: GENERAL.has(who) });
   if (req.method === 'GET' && q.a === 'jobs') {
     const orders = (await allOrders()).filter(o => o.paid);
-    const jobs = await Promise.all(orders.map(async o => summary(await ensureJob(o), o)));
+    const jobs = await Promise.all(orders.map(async o => { const j = await ensureJob(o), sum = summary(j, o), plan = await surfacePlan(req, j).catch(() => ({ surfaces: {} }));
+      sum.needVerify = Object.values(plan.surfaces).filter(x => !x.ready).length; sum.warnings += sum.needVerify; return sum; }));
     return json(res, 200, { jobs, stages: STAGES, names: STAGE_NAME });
   }
   const id = String(q.id || b.id || '').toUpperCase(); if (!/^SL-[2-9A-Z]{5}$/.test(id)) return json(res, 400, { error: 'Bad order id' });
@@ -64,7 +75,8 @@ export default async function handler(req, res) {
     const order = { id: o.id, at: o.at, name: o.name, loc: o.loc, note: o.note, packs: o.packs, singles: o.singles, free: o.free, picks: o.picks ? { ...o.picks, layout: undefined } : null,
       design: o.design ? { laptop: o.design.laptop, packName: o.design.packName, size: o.design.size, n: o.design.n, skins: o.design.skins, sheet: o.design.sheet, mock: o.design.mock, art: o.design.art, skinSize: o.design.skinSize } : null,
       paid: { at: o.paid.at, channel: o.paid.channel, ...(isPrinter ? {} : { amount: o.paid.amount }) }, ...(isPrinter ? {} : { phone: o.phone, total: o.total }), status: o.status };
-    return json(res, 200, { job: isPrinter ? job : forGeneral(job), order, names: STAGE_NAME, stages: STAGES });
+    const plan = await surfacePlan(req, job).catch(e => ({ error: e.message, surfaces: {} }));
+    return json(res, 200, { job: isPrinter ? job : forGeneral(job), order, plan, names: STAGE_NAME, stages: STAGES });
   }
   if (req.method !== 'POST') return json(res, 405, { error: 'GET or POST' });
   if (b.a === 'stage') {   // the Printing Administrator moves the job; every change is recorded with who and when

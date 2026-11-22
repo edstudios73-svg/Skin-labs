@@ -53,6 +53,19 @@ h2{font:400 28px/1.1 'Instrument Serif',serif;margin-bottom:12px}
 .log{list-style:none;font-size:13px}.log li{padding:8px 0;border-bottom:1px solid var(--line);display:grid;gap:2px}.log small{color:var(--mute)}
 textarea,input[type=text],input[type=password]{width:100%;background:#000;border:1px solid var(--line2);padding:11px 12px}
 .login{max-width:400px;margin:12vh auto;display:grid;gap:10px}.err{color:var(--bad);font-size:13px;min-height:18px}
+.tabsn{display:flex;gap:2px;margin-left:18px}.tabsn a{padding:8px 12px;font-size:14px;color:#bbb;text-decoration:none}.tabsn a.on{color:#fff;box-shadow:inset 0 -1px 0 #fff}
+@media (max-width:760px){.tabsn{display:none}.who .lbl{display:none}}
+.srch{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}.srch input{flex:1 1 260px}
+.tl{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);text-decoration:none}.tl:hover{background:#0b0b0b}.tl .m{color:var(--mute);font-size:13px}
+.pill.verified{border-color:var(--ok);color:var(--ok)}.pill.draft{border-color:var(--warn);color:var(--warn)}.pill.none{color:#888;border-color:#444}
+.ed{display:grid;gap:14px}@media (min-width:1100px){.ed{grid-template-columns:420px 1fr;align-items:start}}
+.sf{border:1px solid var(--line);padding:16px}.sf h3{display:flex;justify-content:space-between;align-items:center;font:400 22px 'Instrument Serif',serif;margin-bottom:10px}
+.f6{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.f6 label{display:grid;gap:3px}.f6 input,.f6 select,.ct input{width:100%;background:#000;border:1px solid var(--line2);padding:8px;font-size:13px}
+.ct{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}.ct td{padding:3px 2px}.ct input{padding:5px}
+.sm{font-size:12px;border:1px solid var(--line2);padding:6px 10px}.sm:hover{border-color:#fff}
+.prev{border:1px solid var(--line);background:#0a0a0a;padding:14px;position:sticky;top:80px}.prev svg{width:100%;height:auto;display:block;background:#141414}
+.chk2{font-size:13px;margin-top:10px}.chk2 li{margin-left:18px}.chk2 .e{color:var(--bad)}.chk2 .w{color:var(--warn)}
+.dims{width:100%;border-collapse:collapse;font-size:13px}.dims td,.dims th{text-align:left;padding:7px 4px;border-bottom:1px solid var(--line)}.dims th{font:400 10px 'Geist Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#fff;color:#000;padding:10px 16px;font:500 12px 'Geist Mono',monospace;letter-spacing:.06em;z-index:50}
 </style></head>
 <body><div id="app"></div><div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
@@ -80,10 +93,11 @@ function login(msg) {
   $('#pw').onkeydown = e => { if (e.key === 'Enter') $('#go').click(); };
 }
 const head = () => `<header class="top"><div class="wrap"><a class="brand" href="#" style="text-decoration:none">Skin Lab<small>Print production</small></a>
+  <nav class="tabsn"><a href="#" class="${!location.hash.startsWith('#tpl') ? 'on' : ''}">Jobs</a><a href="#tpl" class="${location.hash.startsWith('#tpl') ? 'on' : ''}">Laptop templates</a></nav>
   <div class="who"><span class="role ${ME_.role === 'printing' ? 'p' : ''}">${ME_.role === 'printing' ? 'Printing Administrator' : 'General Administrator'}</span><span class="lbl">${esc(ME())}</span>
   <a class="lnk" href="${ME_.role === 'printing' ? '/printer/' : '/admin/'}">${ME_.role === 'printing' ? 'Print queue' : 'Admin'}</a><button class="lnk" id="out">Sign out</button></div></div></header>`;
 async function boot() { if (!KEY()) return login(); try { ME_ = await api('?a=me'); } catch (e) { return; } route(); }
-function route() { const h = location.hash.slice(1); if (/^SL-[2-9A-Z]{5}$/.test(h)) job(h); else dash(); }
+function route() { const h = location.hash.slice(1); if (/^SL-[2-9A-Z]{5}$/.test(h)) job(h); else if (h === 'tpl') tpls(); else if (h.startsWith('tpl=')) tpl(h.slice(4)); else dash(); }
 addEventListener('hashchange', route);
 async function dash() {
   app.innerHTML = `${head()}<main class="wrap"><span class="lbl" style="display:block;margin-top:26px">Paid orders only · newest first</span><h1>Print <em>Production</em></h1>
@@ -98,7 +112,7 @@ async function dash() {
     const fn = (TILES.find(t => t[0] === F) || [])[2] || (F === 'open' ? j => !['completed', 'dispatch'].includes(j.stage) : F === 'done' ? j => ['completed', 'dispatch'].includes(j.stage) : () => true), list = JOBS.filter(fn);
     $('#cnt').textContent = `${list.length} job${list.length === 1 ? '' : 's'}`;
     $('#list').innerHTML = list.length ? list.map(j => `<a class="row" href="#${j.id}" style="text-decoration:none"><span class="pic" style="${j.pic ? `background-image:url('${esc(j.pic)}')` : ''}"></span>
-      <span><b>${esc(j.id)}</b> · ${esc(j.name)}<br><span class="m">${esc(j.laptop || (j.surfaces.length ? 'Laptop model not given' : 'Stickers only'))}${j.surfaces.length ? ' · ' + j.surfaces.map(s => ({ lid: 'Lid', kb: 'Keyboard', pad: 'Trackpad', bot: 'Bottom' })[s] || s).join(', ') : ''} · ${j.items} item${j.items === 1 ? '' : 's'}</span>${j.warnings ? `<br><span class="warnn">⚠ ${j.warnings} check${j.warnings > 1 ? 's' : ''} need attention</span>` : ''}</span>
+      <span><b>${esc(j.id)}</b> · ${esc(j.name)}<br><span class="m">${esc(j.laptop || (j.surfaces.length ? 'Laptop model not given' : 'Stickers only'))}${j.surfaces.length ? ' · ' + j.surfaces.map(s => ({ lid: 'Lid', kb: 'Keyboard', pad: 'Trackpad', bot: 'Bottom' })[s] || s).join(', ') : ''} · ${j.items} item${j.items === 1 ? '' : 's'}</span>${j.needVerify ? `<br><span class="warnn">⚠ ${j.needVerify} surface${j.needVerify > 1 ? 's' : ''} need manual verification</span>` : ''}</span>
       <span class="r"><span class="pill ${j.failed ? 'failed' : j.stage}">${esc(j.failed ? NAMES.failed : NAMES[j.stage])}</span><span class="m">${j.updated ? esc(j.updated.by.replace(/ \(.+\)$/, '')) + ' · ' + when(j.updated.at) : ''}</span></span></a>`).join('')
       : `<div class="empty">No jobs here yet. Paid orders appear automatically.</div>`;
   };
@@ -120,7 +134,11 @@ async function job(id) {
         <dt>Laptop</dt><dd>${j.laptop ? esc(j.laptop) : j.surfaces.length ? '<span style="color:var(--warn)">Not given · confirm with the customer before cutting</span>' : 'No laptop (stickers only)'}</dd><dt>Surfaces</dt><dd>${j.surfaces.length ? j.surfaces.map(s => SURF[s] || s).join(', ') : '—'}</dd>${o.note ? `<dt>Customer note</dt><dd>${esc(o.note)}</dd>` : ''}</dl></section>
       <section class="card"><h2>What to make</h2><ul class="items">${j.items.map(i => `<li><span>${esc(i.label)}<small>${esc(KIND[i.kind] || i.kind)}${i.surface ? ' · ' + esc(SURF[i.surface] || i.surface) : ''}${i.size ? ' · ' + esc(i.size) : ''} · ${esc(CUT[i.kind] || '')}</small></span><b>×${i.q}</b></li>`).join('')}</ul></section>
       ${(o.design && (o.design.art || []).length) || (o.design && o.design.mock) ? `<section class="card"><h2>Customer artwork</h2><div class="arts">${o.design.mock ? `<figure><img src="${esc(o.design.mock)}" alt="Laptop preview"><figcaption>Their laptop preview</figcaption></figure>` : ''}${(o.design.art || []).map(a => `<figure><img src="${esc(a.url)}" alt=""><figcaption>${esc(SURF[a.surface] || a.surface)} · ${a.w}×${a.h}px</figcaption></figure>`).join('')}</div></section>` : ''}
-      <section class="card"><h2>Production dimensions</h2>${j.surfaces.length ? `<div class="note">Production templates arrive in the next phase. Until a laptop model has a verified template, every surface is marked <b>needs manual verification</b> and no automatic cutting file is produced.</div>` : '<p class="sub" style="margin:0">Stickers only: sheet sizes come from the products.</p>'}</section>
+      <section class="card"><h2>Production dimensions</h2>${j.surfaces.length ? `${d.plan.model ? `<p class="lbl" style="margin-bottom:8px">${esc(d.plan.model.name)} · ${d.plan.template ? `template v${d.plan.template.version} · ${esc(d.plan.template.status)}` : 'no template yet'} · <a href="#tpl=${esc(d.plan.model.key)}">open template</a></p>` : ''}
+        <table class="dims"><tr><th>Surface</th><th>Size</th><th>Cutouts / keys</th><th>Status</th></tr>${j.surfaces.map(s => { const x = d.plan.surfaces[s] || {}; return x.ready
+          ? `<tr><td>${SURF[s]}</td><td>${x.w} × ${x.h} mm · r${x.r} · bleed ${x.bleed}</td><td>${x.cutouts}${x.keys ? ` · ${x.keys} keys` : ''}</td><td style="color:var(--ok)">Verified template</td></tr>`
+          : `<tr><td>${SURF[s]}</td><td>—</td><td>—</td><td style="color:var(--warn)">Needs manual verification<br><small style="color:var(--mute)">${esc(x.why || '')}</small></td></tr>`; }).join('')}</table>
+        ${Object.values(d.plan.surfaces).some(x => !x.ready) ? '<div class="note">No automatic cutting file is made for a surface without a verified template. Measure the laptop and verify its template first.</div>' : ''}` : '<p class="sub" style="margin:0">Stickers only: sheet sizes come from the products.</p>'}</section>
     </div><div>
       <section class="card"><h2>Production files</h2>${(j.files || []).length ? `<ul class="files">${j.files.map(f => `<li><span>${esc(f.name)}<br><span class="lbl">${esc(f.type || '')}${f.bytes ? ' · ' + (f.bytes / 1e6).toFixed(1) + ' MB' : ''}</span></span>${P ? `<button class="lnk" data-dl="${esc(f.name)}">Download</button>` : ''}</li>`).join('')}</ul>` : '<p class="sub" style="margin:0 0 12px">Not generated yet.</p>'}
         ${P ? `<div class="dl"><button class="btn w" disabled>Download complete package</button>${['General order PNG', 'Transparent artwork', 'Sticker cutlines', 'Laptop skin cutlines', 'Keyboard cutlines', 'Production instructions'].map(n => `<button class="btn" disabled>${n}</button>`).join('')}</div>`
@@ -130,6 +148,99 @@ async function job(id) {
       <section class="card"><h2>Activity</h2><ul class="log">${[...j.log].reverse().map(l => `<li><span><b>${esc(d.names[l.stage] || l.stage)}</b>${l.note ? ' · ' + esc(l.note) : ''}</span><small>${esc(l.by)} · ${when(l.at)}</small></li>`).join('')}</ul></section>
     </div></div>`;
   document.querySelectorAll('[data-st]').forEach(b => b.onclick = async () => { b.disabled = true; try { await api('', { a: 'stage', id, stage: b.dataset.st, note: ($('#nt') || {}).value || '' }); toast(`${id} · ${d.names[b.dataset.st]}`); job(id); } catch (e) { b.disabled = false; toast(e.message); } });
+}
+
+// ---------- laptop production templates (linked to the shop's laptop catalogue) ----------
+let TPL = [], TQ = '', TS = '', TN = 60;
+async function tpls() {
+  app.innerHTML = `${head()}<main class="wrap"><span class="lbl" style="display:block;margin-top:26px">Linked to the shop's laptop catalogue · nothing is copied</span><h1>Laptop <em>templates</em></h1>
+    <p class="sub">${ME_.canManageTemplates ? 'Measure a laptop, enter its surfaces, cutouts and keyboard, then verify it. Only verified templates make automatic cutting files.' : 'Approved templates used for cutting. Templates are managed by the General Administrator.'}</p>
+    <div class="srch"><input type="text" id="tq" placeholder="Search a model: Victus 16, MacBook Air, ThinkPad T14…" value="${esc(TQ)}"><div class="seg" id="ts">${[['', 'All'], ['verified', 'Verified'], ['draft', 'Draft'], ['none', 'No template']].map(([k, n]) => `<button data-s="${k}" class="${TS === k ? 'on' : ''}">${n}</button>`).join('')}</div></div>
+    <div class="tiles" id="tt" style="grid-template-columns:repeat(3,1fr)"></div><div id="tlist"><div class="empty">Loading the catalogue…</div></div></main>`;
+  $('#out').onclick = () => { ls('sl-prod', null); login(); };
+  try { TPL = (await (await fetch('/api/templates/?a=list', { headers: { 'x-admin-key': KEY() } })).json()).laptops || []; } catch (e) { $('#tlist').innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+  const draw = () => { const w = TQ.toLowerCase().split(/\s+/).filter(Boolean), r = TPL.filter(l => (!TS || l.status === TS) && w.every(x => (l.brand + ' ' + l.name).toLowerCase().includes(x)));
+    $('#tt').innerHTML = [['verified', 'Verified templates'], ['draft', 'Drafts to check'], ['none', 'Models with no template']].map(([k, n]) => `<div class="tile"><span class="lbl">${n}</span><b>${TPL.filter(l => l.status === k).length}</b></div>`).join('');
+    $('#tlist').innerHTML = `<p class="lbl" style="margin-bottom:8px">${r.length} model${r.length === 1 ? '' : 's'}</p>` + r.slice(0, TN).map(l => `<a class="tl" href="#tpl=${l.key}"><span><b>${esc(l.brand)} ${esc(l.name)}</b><br><span class="m">${l.scr}″ · ${l.w} × ${l.d} cm · ${l.t} mm${l.surfaces.length ? ' · ' + l.surfaces.map(s => SURF[s] || s).join(', ') : ''}</span></span>
+      <span class="pill ${l.status}">${l.status === 'none' ? 'Needs template' : l.status === 'draft' ? `Draft v${l.version}` : `Verified v${l.version}`}</span></a>`).join('') + (r.length > TN ? `<button class="btn" id="tm" style="margin-top:14px">Show more</button>` : '');
+    if ($('#tm')) $('#tm').onclick = () => { TN += 60; draw(); }; };
+  $('#tq').oninput = e => { TQ = e.target.value; TN = 60; draw(); }; $('#ts').onclick = e => { const b = e.target.closest('[data-s]'); if (!b) return; TS = b.dataset.s; document.querySelectorAll('#ts button').forEach(x => x.classList.toggle('on', x === b)); draw(); };
+  draw();
+}
+// a laptop keyboard laid out from the key pitch: a STARTING POINT to adjust to the real keyboard, never verified on its own
+function genKeys(k) {
+  const u = +k.pitch || 18.5, g = +k.gap || 3, x0 = +k.x0 || 0, r = +k.radius || 1, fn = +k.fnH || 10, keys = []; let y = +k.y0 || 0;
+  const add = (label, x, yy, w, h) => keys.push({ type: 'key', label, x: +(x + g / 2).toFixed(2), y: +(yy + g / 2).toFixed(2), w: +(w - g).toFixed(2), h: +(h - g).toFixed(2), r });
+  const row = (spec, h) => { let x = x0; for (const [l, w] of spec) { if (l !== null) add(l, x, y, w * u, h); x += w * u; } y += h; };
+  const one = s => s.split(' ').map(l => [l, 1]);
+  row([['Esc', 1], ...Array.from({ length: 12 }, (_, i) => ['F' + (i + 1), 1]), ['Del', 1], ['Pwr', 1]], fn);
+  row([...one('` 1 2 3 4 5 6 7 8 9 0 - ='), ['Back', 2]], u);
+  const iso = k.layout === 'ISO', y2 = y;
+  row([['Tab', 1.5], ...one('Q W E R T Y U I O P [ ]'), iso ? [null, 1.5] : ['\\', 1.5]], u);
+  const y3 = y;
+  row([['Caps', 1.75], ...one("A S D F G H J K L ; '"), ...(iso ? [['#', 1], [null, 1.25]] : [['Enter', 2.25]])], u);
+  if (iso) { const a = x0 + 13.5 * u + g / 2, b = x0 + 15 * u - g / 2, c = x0 + 13.75 * u + g / 2, t = y2 + g / 2, m = y2 + u - g / 2, e = y3 + u - g / 2;
+    keys.push({ type: 'key', label: 'Enter', pts: [[a, t], [b, t], [b, e], [c, e], [c, m], [a, m]].map(p => [+p[0].toFixed(2), +p[1].toFixed(2)]) }); }
+  row(iso ? [['Shift', 1.25], ['\\', 1], ...one('Z X C V B N M , . /'), ['Shift', 2.75]] : [['Shift', 2.25], ...one('Z X C V B N M , . /'), ['Shift', 2.75]], u);
+  let x = x0; for (const [l, w] of [['Fn', 1], ['Ctrl', 1], ['Win', 1], ['Alt', 1], ['Space', 6], ['Alt', 1], ['Ctrl', 1]]) { add(l, x, y, w * u, u); x += w * u; }
+  add('←', x, y, u, u); add('↑', x + u, y, u, u / 2); add('↓', x + u, y + u / 2, u, u / 2); add('→', x + 2 * u, y, u, u);
+  return keys;
+}
+const shapeSVG = (c, cls) => c.pts ? `<polygon class="${cls}" points="${c.pts.map(p => p.join(',')).join(' ')}"/>` : c.type === 'circle' ? `<circle class="${cls}" cx="${c.x}" cy="${c.y}" r="${c.w / 2}"/>` : `<rect class="${cls}" x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" rx="${c.r || 0}"/>`;
+function surfSVG(s, x) {   // millimetre drawing: outline (cut), bleed (dashed), cutouts and keys
+  if (!(x.w > 0 && x.h > 0)) return '<p class="sub">Enter the width and height to see it.</p>'; const B = +x.bleed || 0, keys = (x.keyboard && x.keyboard.keys) || [];
+  return `<svg viewBox="${-B - 4} ${-B - 4} ${x.w + 2 * B + 8} ${x.h + 2 * B + 8}" xmlns="http://www.w3.org/2000/svg"><style>.bl{fill:none;stroke:#666;stroke-width:.4;stroke-dasharray:2 1.5}.ol{fill:#2a2a2d;stroke:#ff3b8d;stroke-width:.5}.co{fill:#141414;stroke:#ff3b8d;stroke-width:.4}.ky{fill:#1d1d20;stroke:#ff3b8d;stroke-width:.35}text{font:3px monospace;fill:#aaa}</style>
+    <rect class="bl" x="${-B}" y="${-B}" width="${x.w + 2 * B}" height="${x.h + 2 * B}" rx="${(+x.r || 0) + B}"/><rect class="ol" x="0" y="0" width="${x.w}" height="${x.h}" rx="${x.r || 0}"/>
+    ${(x.cutouts || []).map(c => shapeSVG(c, 'co')).join('')}${keys.map(k => shapeSVG(k, 'ky')).join('')}<text x="1" y="${x.h + B + 3}">${SURF[s]} · ${x.w} × ${x.h} mm · bleed ${B} mm · ${keys.length ? keys.length + ' keys · ' : ''}${(x.cutouts || []).length} cutouts</text></svg>`;
+}
+async function tpl(key) {
+  app.innerHTML = `${head()}<main class="wrap"><div class="empty">Loading…</div></main>`; $('#out').onclick = () => { ls('sl-prod', null); login(); };
+  const r = await fetch(`/api/templates/?key=${encodeURIComponent(key)}`, { headers: { 'x-admin-key': KEY() } }), d = await r.json(); if (!r.ok) { $('main').innerHTML = `<div class="empty">${esc(d.error)}</div>`; return; }
+  const M = d.model, E = ME_.canManageTemplates, T = JSON.parse(JSON.stringify(d.template || { surfaces: {}, notes: '' }));
+  for (const s of ['lid', 'kb', 'pad', 'bot']) T.surfaces[s] ||= { on: false, w: s === 'lid' || s === 'bot' ? M.w * 10 : '', h: s === 'lid' || s === 'bot' ? M.d * 10 : '', r: 6, bleed: 2, offset: 0, cutouts: [] };
+  T.surfaces.kb.keyboard ||= { layout: 'ANSI', pitch: 18.5, gap: 3, x0: 15, y0: 8, fnH: 10, radius: 1.2, keys: [] };
+  let cur = 'lid';
+  const draw = (check) => {
+    const x = T.surfaces[cur], dis = E ? '' : 'disabled';
+    $('main').innerHTML = `<div class="jh"><div><a class="lbl" href="#tpl" style="text-decoration:none">← All laptops</a><h1>${esc(M.brand)} <em>${esc(M.name)}</em></h1>
+        <span class="lbl">Catalogue: ${M.scr}″ · ${M.w} × ${M.d} cm (${M.w * 10} × ${M.d * 10} mm) · ${M.t} mm · model key ${esc(M.key)}</span></div>
+        <span class="pill ${d.template ? d.template.status : 'none'}">${d.template ? `${d.template.status === 'verified' ? 'Verified' : 'Draft'} v${d.template.version}` : 'No template yet'}</span></div>
+      ${!E && !d.template ? `<div class="note">${esc(d.note || 'No verified template for this model yet. Orders for it are flagged for manual verification.')}</div>` : ''}
+      <div class="seg" id="sg" style="margin-bottom:14px">${['lid', 'kb', 'pad', 'bot'].map(s => `<button data-s="${s}" class="${s === cur ? 'on' : ''}">${SURF[s]}${T.surfaces[s].on ? ' ●' : ''}</button>`).join('')}</div>
+      <div class="ed"><div><section class="sf"><h3>${SURF[cur]}<label class="lbl"><input type="checkbox" id="on" ${x.on ? 'checked' : ''} ${dis}> Used on this laptop</label></h3>
+        <div class="f6">${[['w', 'Width mm'], ['h', 'Height mm'], ['r', 'Corner radius'], ['bleed', 'Bleed mm'], ['offset', 'Cut offset mm']].map(([k, n]) => `<label><span class="lbl">${n}</span><input data-k="${k}" type="number" step="0.1" value="${x[k] ?? ''}" ${dis}></label>`).join('')}</div>
+        <h3 style="margin-top:14px">Cutouts ${E ? `<span><button class="sm" id="ac">+ Rectangle</button> <button class="sm" id="acc">+ Camera / circle</button></span>` : ''}</h3>
+        <table class="ct"><tbody>${(x.cutouts || []).map((c, i) => `<tr><td><input data-c="${i}" data-f="label" value="${esc(c.label || c.type)}" ${dis}></td>${['x', 'y', 'w', ...(c.type === 'circle' ? [] : ['h', 'r'])].map(f => `<td><input data-c="${i}" data-f="${f}" type="number" step="0.1" value="${c[f] ?? ''}" title="${f}" ${dis}></td>`).join('')}${E ? `<td><button class="sm" data-del="${i}">×</button></td>` : ''}</tr>`).join('') || '<tr><td class="lbl">No cutouts</td></tr>'}</tbody></table>
+        ${cur === 'kb' ? `<h3 style="margin-top:14px">Keyboard · ${x.keyboard.keys.length} keys</h3><div class="f6">
+          <label><span class="lbl">Layout</span><select data-kb="layout" ${dis}><option ${x.keyboard.layout === 'ANSI' ? 'selected' : ''}>ANSI</option><option ${x.keyboard.layout === 'ISO' ? 'selected' : ''}>ISO</option></select></label>
+          ${[['pitch', 'Key pitch mm'], ['gap', 'Gap mm'], ['x0', 'Left edge mm'], ['y0', 'Top edge mm'], ['fnH', 'F-row height'], ['radius', 'Key corner']].map(([k, n]) => `<label><span class="lbl">${n}</span><input data-kb="${k}" type="number" step="0.1" value="${x.keyboard[k] ?? ''}" ${dis}></label>`).join('')}</div>
+          ${E ? `<button class="sm" id="gk" style="margin-top:10px">Generate layout from these numbers</button><details style="margin-top:10px"><summary class="lbl">Adjust keys exactly (JSON, mm)</summary><textarea id="kj" rows="8" style="font:11px monospace;margin-top:6px">${esc(JSON.stringify(x.keyboard.keys))}</textarea><button class="sm" id="kja">Apply</button></details>
+          <p class="sub" style="font-size:12px;margin:8px 0 0">The generated layout is a starting point. Match every key to the real keyboard before verifying.</p>` : ''}` : ''}
+        </section>
+        ${E ? `<section class="sf" style="margin-top:14px"><label class="lbl">Notes</label><textarea id="nt" rows="2">${esc(T.notes || '')}</textarea>
+          <div class="dl" style="margin-top:10px"><button class="btn" id="sv">Save as new version (draft)</button><button class="btn w" id="vf" ${d.template && d.template.status !== 'verified' ? '' : 'disabled'}>Verify v${d.template ? d.template.version : '–'}</button></div>
+          <label class="lbl" style="display:flex;gap:8px;margin-top:10px;text-transform:none;letter-spacing:0;font:13px Geist"><input type="checkbox" id="ms"> I measured this from the real laptop</label>
+          <div id="ck">${check ? chk(check) : d.check ? chk(d.check) : ''}</div></section>` : ''}
+        ${d.template ? `<section class="sf" style="margin-top:14px"><h3>Versions</h3><ul class="log">${[...(d.template.history || [])].reverse().map(h => `<li><span><b>v${h.version}</b> · ${esc(h.status)}</span><small>${esc(h.by)} · ${when(h.at)}</small></li>`).join('')}</ul></section>` : ''}
+      </div><div class="prev"><span class="lbl" style="display:block;margin-bottom:8px">Preview · pink = cut line, dashed = bleed</span>${surfSVG(cur, x)}</div></div>`;
+    $('#sg').onclick = e => { const b = e.target.closest('[data-s]'); if (b) { cur = b.dataset.s; draw(); } };
+    if (!E) return;
+    $('#on').onchange = e => { x.on = e.target.checked; draw(); };
+    document.querySelectorAll('[data-k]').forEach(i => i.onchange = () => { x[i.dataset.k] = +i.value; draw(); });
+    document.querySelectorAll('[data-c]').forEach(i => i.onchange = () => { const c = x.cutouts[+i.dataset.c]; c[i.dataset.f] = i.dataset.f === 'label' ? i.value : +i.value; draw(); });
+    document.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { x.cutouts.splice(+b.dataset.del, 1); draw(); });
+    $('#ac').onclick = () => { x.cutouts.push({ type: 'rect', label: 'Cutout', x: 10, y: 10, w: 20, h: 10, r: 1 }); draw(); };
+    $('#acc').onclick = () => { x.cutouts.push({ type: 'circle', label: 'Camera', x: (+x.w || 100) / 2, y: 8, w: 6 }); draw(); };
+    document.querySelectorAll('[data-kb]').forEach(i => i.onchange = () => { x.keyboard[i.dataset.kb] = i.dataset.kb === 'layout' ? i.value : +i.value; });
+    if ($('#gk')) $('#gk').onclick = () => { x.keyboard.keys = genKeys(x.keyboard); draw(); toast(`${x.keyboard.keys.length} keys laid out`); };
+    if ($('#kja')) $('#kja').onclick = () => { try { const k = JSON.parse($('#kj').value); if (!Array.isArray(k)) throw 0; x.keyboard.keys = k; draw(); } catch (e) { toast('That is not a valid key list'); } };
+    $('#sv').onclick = async () => { T.notes = $('#nt').value; const j = await post({ a: 'save', key, template: T }); if (j) { d.template = j.template; draw(j.check); toast(`Saved as draft v${j.template.version}`); } };
+    $('#vf').onclick = async () => { const j = await post({ a: 'verify', key, version: d.template.version, measured: $('#ms').checked }); if (j) { d.template = j.template; draw(j.check); toast(`Verified v${j.template.version}`); } };
+  };
+  const chk = c => `<ul class="chk2">${c.errs.map(e => `<li class="e">${esc(e)}</li>`).join('')}${c.warn.map(e => `<li class="w">${esc(e)}</li>`).join('')}${c.ok && !c.warn.length ? '<li style="color:var(--ok)">All checks pass</li>' : ''}</ul>`;
+  const post = async body => { const r = await fetch('/api/templates/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-key': KEY(), 'x-admin-name': ME() }, body: JSON.stringify(body) }), j = await r.json();
+    if (!r.ok) { toast(j.error); if (j.check) $('#ck').innerHTML = chk(j.check); return null; } return j; };
+  draw();
 }
 boot();
 </script></body></html>
