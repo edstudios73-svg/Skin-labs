@@ -95,11 +95,11 @@ function login(msg) {
   $('#pw').onkeydown = e => { if (e.key === 'Enter') $('#go').click(); };
 }
 const head = () => `<header class="top"><div class="wrap"><a class="brand" href="#" style="text-decoration:none">Skin Lab<small>Print production</small></a>
-  <nav class="tabsn"><a href="#" class="${!/^#(tpl|settings)/.test(location.hash) ? 'on' : ''}">Jobs</a><a href="#tpl" class="${location.hash.startsWith('#tpl') ? 'on' : ''}">Laptop templates</a><a href="#settings" class="${location.hash === '#settings' ? 'on' : ''}">Cutting settings</a></nav>
+  <nav class="tabsn"><a href="#" class="${!/^#(tpl|settings|subs)/.test(location.hash) ? 'on' : ''}">Jobs</a><a href="#tpl" class="${location.hash.startsWith('#tpl') ? 'on' : ''}">Laptop templates</a><a href="#settings" class="${location.hash === '#settings' ? 'on' : ''}">Cutting settings</a>${ME_.canManageTemplates ? `<a href="#subs" class="${location.hash === '#subs' ? 'on' : ''}">Artwork submissions</a>` : ''}</nav>
   <div class="who"><span class="role ${ME_.role === 'printing' ? 'p' : ''}">${ME_.role === 'printing' ? 'Printing Administrator' : 'General Administrator'}</span><span class="lbl">${esc(ME())}</span>
   <a class="lnk" href="${ME_.role === 'printing' ? '/printer/' : '/admin/'}">${ME_.role === 'printing' ? 'Print queue' : 'Admin'}</a><button class="lnk" id="out">Sign out</button></div></div></header>`;
 async function boot() { if (!KEY()) return login(); try { ME_ = await api('?a=me'); } catch (e) { return; } route(); }
-function route() { const h = location.hash.slice(1); if (/^SL-[2-9A-Z]{5}$/.test(h)) job(h); else if (h === 'tpl') tpls(); else if (h === 'settings') settings(); else if (h.startsWith('tpl=')) tpl(h.slice(4)); else dash(); }
+function route() { const h = location.hash.slice(1); if (/^SL-[2-9A-Z]{5}$/.test(h)) job(h); else if (h === 'tpl') tpls(); else if (h === 'settings') settings(); else if (h === 'subs') subs(); else if (h.startsWith('tpl=')) tpl(h.slice(4)); else dash(); }
 addEventListener('hashchange', route);
 async function dash() {
   app.innerHTML = `${head()}<main class="wrap"><span class="lbl" style="display:block;margin-top:26px">Paid orders only · newest first</span><h1>Print <em>Production</em></h1>
@@ -291,6 +291,19 @@ async function settings() {
   if (!E) return;
   $('#ss').onclick = async () => { const v = { cutMode: $('#cm').value, spot: $('#sp').value, regMarks: $('#rm').checked }; document.querySelectorAll('[data-k]').forEach(i => v[i.dataset.k] = +i.value);
     try { await api('', { a: 'settings', settings: v }); toast('Settings saved'); settings(); } catch (e) { toast(e.message); } };
+}
+// ---------- customer artwork submitted for the public catalogue (never published without approval) ----------
+async function subs() {
+  app.innerHTML = `${head()}<main class="wrap"><div class="empty">Loading…</div></main>`; $('#out').onclick = () => { ls('sl-prod', null); login(); };
+  let d; try { d = await api('?a=subs'); } catch (e) { if (e.message !== 'login') $('main').innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+  const L = d.subs, pend = L.filter(x => x.status === 'pending');
+  $('main').innerHTML = `<span class="lbl" style="display:block;margin-top:26px">Customers chose to share these · nothing is public until you approve it</span><h1>Artwork <em>submissions</em></h1>
+    <p class="sub">${pend.length} waiting for review · ${L.length} in total. Check the artwork is original or licensed before approving.</p>
+    ${L.length ? `<div class="arts" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px">${L.map(x => `<figure class="card" style="padding:0"><a href="${esc(x.url)}" target="_blank" rel="noopener"><img src="${esc(x.url)}" alt="" style="aspect-ratio:4/3;object-fit:contain;background:#141414"></a>
+      <figcaption style="padding:12px;display:grid;gap:6px"><b>${esc(x.title || 'Untitled')}</b><span class="lbl">${esc(x.id)} · ${when(x.at)} · ${x.w}×${x.h}px</span><span style="font-size:13px;color:#bbb">by ${esc(x.name || 'anonymous')}${x.contact ? ' · ' + esc(x.contact) : ''}</span>
+      <span class="pill ${x.status === 'approved' ? 'verified' : x.status === 'rejected' ? 'failed' : 'draft'}" style="justify-self:start">${esc(x.status)}</span>${x.note ? `<span style="font-size:12px;color:#999">${esc(x.note)}</span>` : ''}
+      ${x.status === 'pending' ? `<div class="dl" style="grid-template-columns:1fr 1fr"><button class="btn w" data-sub="${esc(x.id)}" data-d="approved">Approve</button><button class="btn" data-sub="${esc(x.id)}" data-d="rejected">Reject</button></div>` : ''}</figcaption></figure>`).join('')}</div>` : '<div class="empty">No submissions yet.</div>'}`;
+  document.querySelectorAll('[data-sub]').forEach(b => b.onclick = async () => { const note = b.dataset.d === 'rejected' ? (prompt('Reason (optional, for your records)') || '') : ''; try { await api('', { a: 'sub', id: b.dataset.sub, decision: b.dataset.d, note }); toast(b.dataset.d === 'approved' ? 'Approved' : 'Rejected'); subs(); } catch (e) { toast(e.message); } });
 }
 boot();
 </script></body></html>

@@ -3,6 +3,7 @@
 // orders/ only after Paystack confirms the payment (confirmPayment in _lib.js), so unpaid carts never reach the admin.
 import { put } from './_blob.js';
 import { list } from './_blob.js';
+import { catalogue } from './templates.js';
 import { json, newId, secret, saveCheckout, startPayment, baseOf, payOn, priceOrder, limited, ghPhone, SITE } from './_lib.js';
 import PR from './_prices.js';
 
@@ -35,6 +36,12 @@ export default async function handler(req, res) {
     }
     design.art = art;
   }
+  // the skin size (and so the price) comes from the laptop's real screen size in the shop's catalogue, never from the browser
+  const lapName = str(b.laptop || (d && d.laptop), 80).toLowerCase();
+  if (lapName) { const cat = await catalogue(req).catch(() => null), m = cat && (cat.find(l => `${l.brand} ${l.name}`.toLowerCase() === lapName) || cat.find(l => `${l.brand} ${l.name.replace(/ \(.+\)$/, '')}`.toLowerCase() === lapName));
+    if (m) { const z = m.scr <= 13.5 ? 'S' : m.scr <= 15.7 ? 'M' : 'L';
+      for (const p of packs) { const k = /^skin~([\w-]+)~[SMLC]$/.exec(p.key); if (k) p.key = `skin~${k[1]}~${z}`; }
+      if (design && design.skinSize) design.skinSize = z; } }
   const pr = priceOrder({ packs, singles, design });
   if (pr.bad.length) return json(res, 400, { error: 'Something in your cart is no longer in the shop. Remove it and try again', bad: pr.bad });
   if (pr.short) return json(res, 400, { error: `Single stickers start from GH₵${pr.minSingles} per order. Add GH₵${pr.short} more (${Math.ceil(pr.short / PR.single)} more sticker${Math.ceil(pr.short / PR.single) > 1 ? 's' : ''}), or pick a full pack`, field: 'singles', short: pr.short });

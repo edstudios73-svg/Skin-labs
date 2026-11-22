@@ -106,6 +106,15 @@ export default async function handler(req, res) {
   if (!who) return limited(req, 'login-fail', 8, 15 * 60e3) ? json(res, 429, { error: 'Too many wrong passwords. Wait 15 minutes' }) : json(res, 401, { error: 'Wrong password' });
   const isPrinter = who === 'printer', by = `${adminName(req)} (${isPrinter ? 'Printing Admin' : 'General Admin'})`, q = req.query || {}, b = req.body || {};
   if (req.method === 'GET' && q.a === 'me') return json(res, 200, { role: isPrinter ? 'printing' : 'general', login: who, canDownload: isPrinter, canManageTemplates: GENERAL.has(who) });
+  if (q.a === 'subs' || b.a === 'sub') {   // customer artwork sent for the public catalogue: General Admin approves or rejects
+    if (!GENERAL.has(who)) return json(res, 403, { error: 'Artwork submissions are reviewed by the General Administrator' });
+    if (req.method === 'GET') return json(res, 200, { subs: await loadDocs('submissions/') });
+    const sid = String(b.id || ''); if (!/^ART-[2-9A-Z]{6}$/.test(sid)) return json(res, 400, { error: 'Bad submission id' });
+    const sub = await loadDoc(`submissions/${sid}`); if (!sub) return json(res, 404, { error: 'No such submission' });
+    if (!['approved', 'rejected'].includes(b.decision)) return json(res, 400, { error: 'Approve or reject' });
+    sub.status = b.decision; sub.note = String(b.note || '').slice(0, 300); (sub.log ||= []).push({ at: Date.now(), by, s: b.decision, note: sub.note });
+    await saveDoc(`submissions/${sid}`, sub); return json(res, 200, { sub });
+  }
   if (q.a === 'settings' || b.a === 'settings') {   // cutting / printing settings: General Admin edits, everyone reads
     const { DEFAULTS } = await import('./_produce.js'), cur = { ...DEFAULTS, ...((await loadDoc('production-settings')) || {}) };
     if (req.method === 'GET') return json(res, 200, { settings: cur, defaults: DEFAULTS, canEdit: GENERAL.has(who) });
