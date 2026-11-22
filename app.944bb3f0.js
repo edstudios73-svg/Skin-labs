@@ -426,12 +426,14 @@ function newDrops() {
 }
 // ---------- shop: product-first home. Every pack, skin and single sticker shares one card ----------
 // A product: { key, kind: pack|skin|single, id, name, cat, img, price, note, href, design }
-const SKCATN = { anime: 'Anime', heroes: 'Heroes', art: 'Art', cars: 'Cars', football: 'Football', gaming: 'Gaming', music: 'Music', nature: 'Nature', girly: 'Girly', street: 'Street art', space: 'Space' };
+const SKCATN = { code: 'Code & Tech', anime: 'Anime', heroes: 'Heroes & Villains', art: 'Art & Abstract', girly: 'Girly & Cute', street: 'Street & Graffiti', cars: 'Cars', football: 'Football', gaming: 'Gaming', music: 'Music', nature: 'Nature', space: 'Space' };
 const prodPack = p => ({ key: p.id, kind: 'pack', id: p.id, name: p.nice, cat: (CAT[p.cat] || {}).name || 'Stickers', catId: p.cat, img: sh(p.id, 'sheets-sm'), price: p.price, isNew: !!(p.new || p.drop),
   note: p.size === 'XL' ? 'XL lid sticker · about 18 cm' : p.size === 'A3' ? `A3 sheet · ${p.items.length} stickers` : `A4 sheet · ${p.items.length} stickers${p.a5 ? ` · A5 ${CUR}${p.p5}` : ''}`,
   href: '#' + p.id, design: `/design/?pack=${encodeURIComponent(p.id)}` });
 const prodSkin = s => ({ key: 'skin~' + s[0], kind: 'skin', id: s[0], name: s[1], cat: SKCATN[SKTAG[s[0]]] || 'Laptop skin', catId: 'skins', img: `skins/${s[0]}-s.${IX}`, price: SKINP.S.price, from: 1, isNew: NEWSKIN.has(s[0]),
   note: 'Sized to your laptop', href: '#skin-' + s[0], design: `/design/?skin=${encodeURIComponent(s[0])}` });
+const prodDecal = d => ({ key: 'dc~' + d[0], kind: 'decal', id: d[0], name: d[1], cat: ART, catId: 'art', img: `decals/${d[0]}-r.${IX}`, price: XP.decal, isNew: true,
+  note: `${DKIND[d[2]]} · black or white`, href: '#decal-' + d[0], design: '#decal-' + d[0] });
 const prodSingle = c => { const { p, it } = CODE[c]; return { key: 'one~' + c, kind: 'single', id: c, name: `${p.nice} · ${c}`, cat: (CAT[p.cat] || {}).name || 'Sticker', catId: 'singles', spr: [p, it], price: PRICE,
   note: 'Single sticker', href: '#' + p.id, design: `/design/?sticker=${encodeURIComponent(c)}` }; };
 const shopPacks = () => D.packs.filter(p => !p.free && CAT[p.cat]);
@@ -440,13 +442,13 @@ const shopSingles = () => shopPacks().flatMap(p => p.items.slice(0, 2).map(it =>
 function prodCard(x, i = 9) {
   const pic = x.spr ? `<span class="pc-spr">${spr(x.spr[0], x.spr[1], 150)}</span>`
     : `<img src="${x.img}" alt="${esc(x.name)}" loading="${i < 8 ? 'eager' : 'lazy'}" decoding="async">`;
-  const q = x.kind === 'single' ? cart[x.id] : packs[x.kind === 'skin' ? skinKey(x.id) : x.id];
-  const sv = x.kind === 'pack' ? x.id : x.kind === 'skin' ? 'sk:' + x.id : '';
-  return `<article class="pc ${x.kind === 'skin' ? 'is-skin' : ''}" data-key="${esc(x.key)}">
+  const q = x.kind === 'single' ? cart[x.id] : packs[x.kind === 'skin' ? skinKey(x.id) : x.kind === 'decal' ? `dc~${x.id}~b` : x.id];
+  const sv = x.kind === 'pack' ? x.id : x.kind === 'skin' ? 'sk:' + x.id : x.kind === 'decal' ? 'dc:' + x.id : '';
+  return `<article class="pc ${x.kind === 'skin' ? 'is-skin' : x.kind === 'decal' ? 'is-art' : ''}" data-key="${esc(x.key)}">
     <div class="pc-im"><a class="pc-img" href="${x.href}" aria-label="${esc(x.name)}">${x.isNew ? '<span class="pc-tag">New</span>' : ''}${pic}</a>${sv ? heart(sv, x.name) : ''}</div>
     <div class="pc-meta"><span class="pc-cat">${esc(x.cat)}</span><a class="pc-name" href="${x.href}">${esc(x.name)}</a>
       <div class="pc-row"><span class="pc-price">${x.from ? 'from ' : ''}${CUR}${x.price}</span><span class="pc-note">${esc(x.note)}</span></div></div>
-    <div class="pc-act"><a class="pc-btn pc-design" href="${x.design}">Design on my laptop</a>
+    <div class="pc-act"><a class="pc-btn pc-design" href="${x.design}">${x.kind === 'decal' ? 'See it on a laptop' : 'Design on my laptop'}</a>
       <button type="button" class="pc-btn pc-add" data-add="${esc(x.key)}">${q ? `In cart (${q}) · add` : 'Add to cart'}</button></div></article>`;
 }
 const hasLap = () => { const d = store.get('sl-design3', null); return !!(d && d.scr); };
@@ -454,18 +456,20 @@ const myLap = () => { const d = store.get('sl-design3', null); return d && d.scr
 const mySkinZ = () => { const d = store.get('sl-design3', null); return d && d.scr ? skinFor(d.scr) : 'M'; };
 const skinKey = id => `skin~${id}~${mySkinZ()}`;
 function addProduct(key) {
-  const [t, id] = key.startsWith('skin~') ? ['skin', key.slice(5)] : key.startsWith('one~') ? ['single', key.slice(4)] : ['pack', key];
+  const [t, id] = key.startsWith('skin~') ? ['skin', key.slice(5)] : key.startsWith('one~') ? ['single', key.slice(4)] : key.startsWith('dc~') ? ['decal', key.slice(3)] : ['pack', key];
   let name;
   if (t === 'single') { if (!CODE[id]) return; cart[id] = Math.min((cart[id] || 0) + 1, 99); saveCart(); name = `Sticker ${id}`; }
   else if (t === 'skin') { if (!SKIN[id]) return; if (!hasLap()) { toast('Pick your laptop so the skin is cut to its size'); setTimeout(() => location.href = `/design/?skin=${encodeURIComponent(id)}`, 600); return; } const k = skinKey(id); setPack(k, (packs[k] || 0) + 1); name = `${SKIN[id][1]} skin`; }
+  else if (t === 'decal') { if (!DEC[id]) return; const k = `dc~${id}~b`; setPack(k, (packs[k] || 0) + 1); name = `${DEC[id][1]} (black vinyl, change it in the cart)`; }
   else { if (!PK[id]) return; setPack(id, (packs[id] || 0) + 1); name = PK[id].nice; }
   buzz(); updBar();
-  document.querySelectorAll(`.pc[data-key="${CSS.escape(key)}"] .pc-add`).forEach(b => { const q = t === 'single' ? cart[id] : packs[t === 'skin' ? skinKey(id) : id]; b.textContent = `In cart (${q}) · add`; b.classList.add('done'); setTimeout(() => b.classList.remove('done'), 900); });
+  document.querySelectorAll(`.pc[data-key="${CSS.escape(key)}"] .pc-add`).forEach(b => { const q = t === 'single' ? cart[id] : packs[t === 'skin' ? skinKey(id) : t === 'decal' ? `dc~${id}~b` : id]; b.textContent = `In cart (${q}) · add`; b.classList.add('done'); setTimeout(() => b.classList.remove('done'), 900); });
   for (const s of ['#nv-cart', '#t-cart']) { const e = $(s); if (e) { e.classList.remove('bump'); void e.offsetWidth; e.classList.add('bump'); } }
   toast(`Added to cart: ${name}`);
 }
 let SHOPF = store.get('sl-shopf', 'all'), SHOPN = 24;
-const prodOfItem = x => !x ? null : x.type === 'pack' && PK[x.k] ? prodPack(PK[x.k]) : x.type === 'skin' && SKIN[x.k.slice(3)] ? prodSkin(SKIN[x.k.slice(3)]) : null;
+const skinThemes = () => Object.entries(SKCATN).filter(([k]) => shopSkins().some(x => SKTAG[x[0]] === k));
+const prodOfItem = x => !x ? null : x.type === 'pack' && PK[x.k] ? prodPack(PK[x.k]) : x.type === 'skin' && SKIN[x.k.slice(3)] ? prodSkin(SKIN[x.k.slice(3)]) : x.type === 'decal' && DEC[x.k.slice(3)] ? prodDecal(DEC[x.k.slice(3)]) : null;
 // recently viewed: packs and skins this phone opened, newest first
 const seen = k => store.set('sl-viewed', [k, ...(store.get('sl-viewed', []) || []).filter(x => x !== k)].slice(0, 12));
 const viewed = (n = 4, skip) => (store.get('sl-viewed', []) || []).filter(k => k !== skip).map(k => prodOfItem(itemOf(k))).filter(Boolean).slice(0, n);
@@ -473,6 +477,8 @@ const viewed = (n = 4, skip) => (store.get('sl-viewed', []) || []).filter(k => k
 document.addEventListener('click', e => { const a = e.target.closest('[data-add]'); if (a) { e.preventDefault(); addProduct(a.dataset.add); return; } if (e.target.closest('[data-idea]')) { e.preventDefault(); openInspo(); } });
 function shopList(f) {
   if (f === 'skins') return shopSkins().map(prodSkin);
+  if (f === 'art') return DECALS.map(prodDecal);
+  if (f.startsWith('skin:')) return shopSkins().filter(x => SKTAG[x[0]] === f.slice(5)).map(prodSkin);
   if (f === 'packs') return shopPacks().map(prodPack);
   if (f === 'singles') return shopSingles().map(prodSingle);
   if (CAT[f]) return CAT[f].packs.map(id => PK[id]).filter(Boolean).map(prodPack);
@@ -480,7 +486,7 @@ function shopList(f) {
   const ps = shopPacks().map(prodPack), ss = shopSkins().map(prodSkin), out = [];
   ps.sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
   for (let i = 0, j = 0; i < ps.length || j < ss.length;) { if (i < ps.length) out.push(ps[i++]); if (i < ps.length) out.push(ps[i++]); if (j < ss.length) out.push(ss[j++]); }
-  return out;
+  return [...out, ...DECALS.map(prodDecal)];
 }
 function shopGrid() {
   const all = shopList(SHOPF), list = all.slice(0, SHOPN);
@@ -492,6 +498,11 @@ function shopRow(id, title, sub, items, f) {
   if (!items.length) return '';
   return `<section class="srow" id="${id}"><div class="srow-h"><div><h2>${title}</h2>${sub ? `<p>${sub}</p>` : ''}</div>${f ? `<button type="button" class="srow-all" data-f="${f}">View all</button>` : ''}</div>
     <div class="pgrid">${items.map(prodCard).join('')}</div></section>`;
+}
+function catRow(id, title, sub, items, f) {
+  if (!items.length) return '';
+  return `<section class="srow crow" id="${id}"><div class="srow-h"><div><h3>${esc(title)}</h3><p>${esc(sub)}</p></div>${items.length > 4 ? `<button type="button" class="srow-all" data-f="${esc(f)}">View all ${items.length}</button>` : ''}</div>
+    <div class="pgrid">${items.slice(0, 4).map(prodCard).join('')}</div></section>`;
 }
 function vHome() {
   const seen = new Set(), take = (list, n) => { const out = []; for (const x of list) { if (out.length >= n) break; if (seen.has(x.key)) continue; seen.add(x.key); out.push(x); } return out; };
@@ -513,17 +524,21 @@ function vHome() {
     ${myOrders()}${lastOrder()}
     <section class="gal" id="explore">
       <div class="gal-h"><div><h2>Explore Our Designs</h2><p id="g-count"></p></div>
-        <div class="gal-f"><div class="segs" role="tablist" aria-label="Product type">${[['all', 'All'], ['skins', 'Laptop skins'], ['packs', 'Sticker packs'], ['singles', 'Single stickers']].map(([k, n]) => `<button type="button" role="tab" data-f="${k}">${n}</button>`).join('')}</div>
-          <label class="csel"><span class="sr">Category</span><select id="g-cat"><option value="">All categories</option>${cats.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></label></div></div>
+        <div class="gal-f"><div class="segs" role="tablist" aria-label="Product type">${[['all', 'All'], ['packs', 'Sticker packs'], ['skins', 'Laptop skins'], ['art', ART], ['singles', 'Single stickers']].map(([k, n]) => `<button type="button" role="tab" data-f="${k}">${n}</button>`).join('')}</div>
+          <label class="csel"><span class="sr">Category</span><select id="g-cat"><option value="">All categories</option><optgroup label="Sticker packs">${cats.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</optgroup><optgroup label="Laptop skins">${skinThemes().map(([k, n]) => `<option value="skin:${k}">${esc(n)}</option>`).join('')}</optgroup><optgroup label="${ART}"><option value="art">All ${ART}</option></optgroup></select></label></div></div>
       <div class="pgrid" id="g-grid"></div>
       <button type="button" class="b3 b3-o g-more" id="g-more" hidden>Show more</button>
     </section>
     ${shopRow('s-seen', 'Recently Viewed', 'Pick up where you left off.', viewed(4), '')}
     ${shopRow('s-new', 'New Arrivals', 'Fresh from the print table.', fresh, 'all')}
     ${shopRow('s-trend', 'Trending Designs', 'What people in Accra are ordering right now.', trend, '')}
-    ${shopRow('s-skins', 'Laptop Skins', `Full-lid vinyl skins, cut to your laptop. From ${CUR}${SKINP.S.price}.`, skins4, 'skins')}
-    ${shopRow('s-packs', 'Sticker Packs', 'Whole sheets of die-cut stickers.', packs4, 'packs')}
+    <div class="byc" id="by-cat"><div class="byc-h"><span class="lbl">Shop by category</span><h2>Everything in the shop</h2><p>${shopPacks().length} sticker packs, ${shopSkins().length} laptop skins and ${DECALS.length} ${ART} pieces, by category.</p>
+      <nav class="byc-nav" aria-label="Categories">${cats.map(c => `<a href="#c-${c.id}">${esc(c.name)}</a>`).join('')}${skinThemes().map(([k, n]) => `<a href="#c-skin-${k}">${esc(n)} skins</a>`).join('')}<a href="#c-art">${ART}</a></nav></div>
+    ${cats.map(c => { const l = c.packs.map(id => PK[id]).filter(Boolean).map(prodPack); return catRow(`c-${c.id}`, c.name, `${l.length} pack${l.length > 1 ? 's' : ''} · stickers`, l, c.id); }).join('')}
+    ${skinThemes().map(([k, n]) => { const l = shopSkins().filter(x => SKTAG[x[0]] === k).map(prodSkin); return catRow(`c-skin-${k}`, `${n} skins`, `${l.length} laptop skin${l.length > 1 ? 's' : ''} · sized to your laptop`, l, 'skin:' + k); }).join('')}
+    ${catRow('c-art', ART, `${DECALS.length} cut-out pieces that play with your laptop`, DECALS.map(prodDecal), 'art')}
     ${shopRow('s-singles', 'Single Stickers', `Only want a few? ${CUR}${PRICE} each.`, singles4, 'singles')}
+    </div>
     ${INS.length ? `<section class="srow" id="s-custom"><div class="srow-h"><div><h2>Custom Creations</h2><p>Real laptops we dressed. Tap one to get the look.</p></div><a class="srow-all" href="#inspo">View all</a></div>
       <div class="pgrid">${INS.slice(0, 4).map(x => `<article class="pc"><a class="pc-img ph" href="#inspo"><img src="inspo/sm/${x.id}.${IX}" alt="Custom laptop by Skin Lab" loading="lazy"></a>
         <div class="pc-meta"><span class="pc-cat">Custom</span><span class="pc-name">${esc(x.alt || 'Custom laptop')}</span><div class="pc-row"><span class="pc-price">from ${CUR}15</span><span class="pc-note">Made to order</span></div></div>
@@ -535,14 +550,15 @@ function vHome() {
     ${reviewsBlock()}${footer}`;
   const setF = f => { SHOPF = f; SHOPN = 24; store.set('sl-shopf', f);
     app.querySelectorAll('.segs [data-f]').forEach(b => { const on = b.dataset.f === f || (CAT[f] && b.dataset.f === 'packs'); b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
-    $('#g-cat').value = CAT[f] ? f : ''; shopGrid(); };
+    $('#g-cat').value = CAT[f] || f.startsWith('skin:') ? f : ''; if (f.startsWith('skin:')) app.querySelector('.segs [data-f=skins]').classList.add('on'); shopGrid(); };
   app.querySelector('.segs').onclick = e => { const b = e.target.closest('[data-f]'); if (b) setF(b.dataset.f); };
   $('#g-cat').onchange = e => setF(e.target.value || 'all');
   $('#g-more').onclick = () => { SHOPN += 24; shopGrid(); };
+  app.querySelectorAll('.byc-nav a').forEach(a => a.onclick = e => { e.preventDefault(); const t = $(a.getAttribute('href')); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   app.querySelectorAll('.srow-all[data-f]').forEach(b => b.onclick = () => { setF(b.dataset.f); $('#explore').scrollIntoView({ behavior: 'smooth' }); });
   app.onclick = e => { if (!$('#explore')) return;
     const ex = e.target.closest('a[href="#explore"]'); if (ex) { e.preventDefault(); $('#explore').scrollIntoView({ behavior: 'smooth' }); } };
-  setF(SHOPF === 'all' || SHOPF === 'skins' || SHOPF === 'packs' || SHOPF === 'singles' || CAT[SHOPF] ? SHOPF : 'all');
+  setF(['all', 'skins', 'packs', 'singles', 'art'].includes(SHOPF) || CAT[SHOPF] || SHOPF.startsWith('skin:') ? SHOPF : 'all');
   if ($('#again')) $('#again').onclick = reorder;
 }
 // ---------- account: orders, tracking, saved designs and wishlist in one place (kept on this phone) ----------
@@ -592,7 +608,6 @@ function vPack(p) {
         <button class="btn wa" type="button" id="orderpack"><span id="op-t">Order</span></button>
         <button class="btn o" type="button" data-packbtn="${p.id}" id="addpack"></button>
         <a class="btn o" href="/design/?pack=${encodeURIComponent(p.id)}">Design on my laptop</a>
-        ${FREE.length ? `<p class="frl"><i>FREE</i> + 1 free sticker with every order · pick it at checkout</p>` : ''}
       </div>
     </div>
     <div class="sech" style="margin-top:26px"><div><h2 style="font-size:clamp(32px,8vw,48px)">What's <em>inside</em></h2><p class="sub">Only want a few? Tap the ones you like (${CUR}${PRICE} each), then <b>Checkout</b>. Hold one to see it bigger.</p></div></div>

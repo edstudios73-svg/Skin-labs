@@ -229,7 +229,7 @@ try { addDrops(JSON.parse(localStorage.getItem('sl-drops') || 'null')); } catch 
 // free sticker (one per order): shown as the first tab in the tray
 function addFree(f) { if (!f || !Array.isArray(f.stickers) || PK['free-stickers']) return 0;
   const items = f.stickers.map(x => [x.code, 0, 0, x.w, x.h, `/free/${x.code}-s.webp`, `/free/${x.code}.webp`]), p = { id: 'free-stickers', cat: 'free', name: 'FREE · 1 PER ORDER', aw: 1, ah: 1, items, drop: 1, free: 1 };
-  PK[p.id] = p; items.forEach(it => CODE[it[0]] = { p, it }); CAT.free = { id: 'free', name: 'Free ★', packs: [p.id] }; D.cats.unshift(CAT.free); return 1; }
+  PK[p.id] = p; items.forEach(it => CODE[it[0]] = { p, it }); return 1   /* free stickers are picked in the cart / checkout only, never in the studio */; }
 try { addFree(JSON.parse(localStorage.getItem('sl-free-cat') || 'null')); } catch (e) {}
 const isFree = c => String(c).startsWith('XQV-');
 const hdSrc = c => (CODE[c] && CODE[c].it[6]) || `/hd/${c}.avif`;
@@ -775,7 +775,7 @@ const snap = () => { hist.push(JSON.stringify({ items, skin, artT })); if (hist.
 const mode = '3d', realSet = () => null, phLayout = () => {}, phLid = () => {};
 
 // ---------- step 2: editor ----------
-const C0 = CAT.free || D.cats.find(c => !['xl', 'mix'].includes(c.id)) || D.cats[0];   // open on a full category, not the one-sticker lid centrepieces
+const C0 = D.cats.find(c => !['xl', 'mix'].includes(c.id)) || D.cats[0];   // open on a full category, not the one-sticker lid centrepieces
 let tab = 'skins', ccat = C0.id, cpack = C0.packs[0];
 async function vEditor() {
   syncSize();
@@ -952,6 +952,6 @@ if (LL) { L = LL; col = L.cols.includes(fromLink.c) ? fromLink.c : L.cols[0]; fo
   for (const k in items) items[k] = (st.items && st.items[k] || []).filter(o => CODE[o.c]); Object.assign(skin, st.skin || {}); vEditor(); } else { vPick(); warmGL(); } warmGL();
 addEventListener('hashchange', () => { if (location.hash === '#pick') vPick(); });
 (() => { const n = Object.values(store.get('sl-packs', {}) || {}).reduce((a, b) => a + b, 0) + Object.values(store.get('sl-cart', {}) || {}).reduce((a, b) => a + b, 0) + (store.get('sl-dsg', null) ? 1 : 0); const b = $('#hbd'); if (b && n) { b.hidden = false; b.textContent = n; } })();
-fetch('/free/free.json').then(r => r.ok ? r.json() : null).then(f => { if (!f) return; try { localStorage.setItem('sl-free-cat', JSON.stringify(f)); } catch (e) {} if (addFree(f) && $('#tray')) { ccat = 'free'; cpack = 'free-stickers'; pane(); } }).catch(() => {});
+fetch('/free/free.json').then(r => r.ok ? r.json() : null).then(f => { if (!f) return; try { localStorage.setItem('sl-free-cat', JSON.stringify(f)); } catch (e) {} addFree(f); }).catch(() => {});
 fetch('/api/catalog/').then(r => r.ok ? r.json() : null).then(c => { if (!c) return; try { localStorage.setItem('sl-drops', JSON.stringify(c)); } catch (e) {} if (addDrops(c) && $('#tray')) pane(); }).catch(() => {});
 </script></body></html>
