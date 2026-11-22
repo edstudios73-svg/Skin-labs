@@ -139,11 +139,46 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 .pki{min-height:200px;display:grid;place-items:center;background:#151515}.pki img{width:100%;display:block}
 .skpart{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-bottom:10px}.skpart button{display:grid;gap:2px;text-align:left;padding:10px 12px;border:1px solid var(--line2);border-radius:10px;background:transparent;color:inherit;min-width:0}.skpart button b{font-size:13px}.skpart button small{font-size:11px;opacity:.65;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.skpart button.on{border-color:#FFD21F;background:rgba(255,210,31,.1)}
 .skz{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.skz button{display:grid;gap:1px;text-align:left;padding:10px 12px;border:1px solid var(--line2)}.skz button.on{background:#fff;color:#000;border-color:#fff}.skz b{font-size:14.5px;font-weight:600}.skz small{font-size:11px;opacity:.7}.skz i{font-style:normal;font-weight:700;font-size:15px;margin-top:3px}
+
+/* ===== 2026 redesign: studio layout ===== */
+.wrap{max-width:1320px}
+.top{justify-content:flex-start;gap:8px}
+.nav2{display:none}
+.hic2{margin-left:auto;display:flex;gap:2px}.hic2 a{position:relative;display:grid;place-items:center;width:40px;height:40px;color:#fff}
+.hic2 svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#hbd{position:absolute;top:3px;right:1px;min-width:17px;height:17px;padding:0 4px;background:#fff;color:#000;font:600 10px/17px var(--mono);text-align:center;border-radius:9px!important}
+@media (min-width:1000px){.nav2{display:flex;margin-left:28px}.nav2 a{padding:10px 14px;font-size:14px;color:#cfcfcf;text-decoration:none}.nav2 a.on{color:#fff;box-shadow:inset 0 -1px 0 #fff}.top{height:64px}}
+.steps{list-style:none;display:flex;gap:6px;padding:0;margin:4px 0 18px;counter-reset:s;overflow-x:auto;scrollbar-width:none}
+.steps li{display:flex;align-items:center;gap:8px;white-space:nowrap;font:400 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:#777;padding-right:14px}
+.steps li+li::before{content:'';width:22px;height:1px;background:#333;margin-right:8px}
+.steps li span{display:grid;place-items:center;width:22px;height:22px;border:1px solid #444;font-size:10.5px;letter-spacing:0}
+.steps li.on{color:#fff}.steps li.on span{background:#fff;color:#000;border-color:#fff}.steps li.done{color:#bbb}.steps li.done span{border-color:#bbb}
+.want{display:flex;align-items:center;gap:14px;border:1px solid var(--line2);padding:12px 14px;margin:0 0 18px}.want b{display:block;font-weight:500}.want small{color:#999;font-size:13px}
+.wimg{flex:none;width:64px;height:44px;display:grid;place-items:center;background:#111;overflow:hidden}.wimg img{width:100%;height:100%;object-fit:cover}
+.psub{color:#999;margin:14px 0 18px;font-size:14px}
+.drawer{gap:0!important}
+.dsec{display:grid;gap:10px;padding:14px 0;border-bottom:1px solid var(--line)}.dsec:last-child{border-bottom:0}
+.dh{display:flex;align-items:center;gap:10px}.dh b{font-weight:500;font-size:14px}
+.dn{display:grid;place-items:center;width:20px;height:20px;border:1px solid #555;font:400 10.5px var(--mono)}
+.rst{margin-left:auto;font:400 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:#888;border-bottom:1px solid #444;padding:2px 0}
+.sel2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.sel2 label{display:grid;gap:4px;min-width:0}
+.sel2 select{appearance:none;width:100%;background:#000 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23fff' stroke-width='1.4'/%3E%3C/svg%3E") right 12px center no-repeat;border:1px solid var(--line2);color:#fff;font:400 13.5px var(--body);padding:10px 32px 10px 12px;text-overflow:ellipsis}
+/* vertical browsing everywhere: no sideways scrolling for designs */
+.tray{grid-auto-flow:row!important;grid-template-rows:none!important;grid-template-columns:repeat(auto-fill,minmax(64px,1fr))!important;grid-auto-columns:auto!important;max-height:236px;overflow-y:auto!important;overflow-x:hidden!important}
+.skins{grid-auto-flow:row!important;grid-template-rows:none!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;grid-auto-columns:auto!important;max-height:300px;overflow-y:auto!important;overflow-x:hidden!important}
+@media (min-width:1000px){.drawer{max-height:calc(100vh - 170px);overflow-y:auto;scrollbar-width:thin;padding-right:4px}.dsec:last-child{position:sticky;bottom:0;background:#000;border-top:1px solid var(--line);z-index:3}.tray{max-height:300px}.skins{max-height:340px}.ed{grid-template-columns:minmax(0,1fr) 400px}.stage{height:min(74vh,700px)}}
+.acts{grid-template-columns:repeat(4,minmax(0,1fr))!important}.acts .btn{font-size:13px!important;height:46px}
+.cmpb{position:absolute;right:14px;bottom:14px;z-index:4;background:#000;color:#fff;font:500 10.5px var(--mono);letter-spacing:.14em;text-transform:uppercase;padding:6px 9px}
+#cmp[aria-pressed=true]{background:#fff;color:#000}
+body.cmping #pane,body.cmping #surf{opacity:.45}
+@media (max-width:999px){.steps{margin-top:0}.steps li{font-size:10px}.acts{position:sticky;bottom:calc(64px + env(safe-area-inset-bottom,0px));background:#000;padding:8px 0;z-index:5}}
 </style>
 <script type="importmap">{"imports":{"three":"/vendor/three/three.module.min.js"}}</script>
 <link rel="modulepreload" href="/vendor/three/three.module.min.js"><link rel="modulepreload" href="/vendor/three/OrbitControls.js">
 </head><body>
-<header class="top"><a class="brand" href="/" style="color:#fff;text-decoration:none"><b>Skin Lab</b><i></i><small>BY BAIDEN<br>CREATIVES</small></a><a class="wa" href="https://wa.me/233558362423" target="_blank" rel="noopener" style="text-decoration:none"><i></i>Chat<span class="t">with us ●</span></a></header>
+<header class="top"><a class="brand" href="/" style="color:#fff;text-decoration:none"><b>Skin Lab</b><i></i><small>BY BAIDEN<br>CREATIVES</small></a>
+<nav class="nav2" aria-label="Main"><a href="/">Home</a><a href="/#explore">Shop</a><a href="/design/" class="on" aria-current="page">Design Studio</a><a href="/#inspo">Inspiration</a><a href="/#contact">Contact</a></nav>
+<div class="hic2"><a href="/#search" aria-label="Search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></a><a href="/#account" aria-label="Your account"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></a><a href="/#cart" aria-label="Cart" class="hcart"><svg viewBox="0 0 24 24"><path d="M5 7h14l-1.5 13h-11Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg><span id="hbd" hidden></span></a></div></header>
 <main class="wrap" id="app"></main>
 <nav class="tabs"><a href="/">
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 11 12 3l9 8v10h-6v-6H9v6H3Z"/></svg>Home</a><a href="/design/" class="on">
@@ -195,13 +230,25 @@ const items = { lid: [], kb: [], bot: [] }, skin = { lid: '', kb: '', bot: '', p
 let part = 'kb', PADR = null;   // part: on the keyboard surface, skin the keyboard area or just the trackpad
 const SN = { lid: 'Lid', kb: 'Keyboard', bot: 'Bottom' };
 
+// ---------- steps + "Design on my laptop" from the shop ----------
+const steps = n => `<ol class="steps" aria-label="Design steps">${['Choose laptop', 'Design', 'Review & add to cart'].map((t, i) => `<li class="${i + 1 === n ? 'on' : i + 1 < n ? 'done' : ''}" ${i + 1 === n ? 'aria-current="step"' : ''}><span>${i + 1 < n ? '✓' : i + 1}</span>${t}</li>`).join('')}</ol>`;
+const WANT = (() => { const u = new URLSearchParams(location.search), k = ['skin', 'pack', 'sticker'].find(x => u.get(x)); return k ? { kind: k, id: u.get(k) } : null; })();
+const wantName = () => !WANT ? '' : WANT.kind === 'skin' ? `${(PHOTO.find(x => x[0] === WANT.id) || [, WANT.id.replace(/^ph-/, '').replace(/-/g, ' ')])[1]} skin` : WANT.kind === 'pack' ? (PK[WANT.id] ? PK[WANT.id].name.charAt(0) + PK[WANT.id].name.slice(1).toLowerCase() + ' stickers' : 'Sticker pack') : `Sticker ${WANT.id}`;
+const wantPic = () => !WANT ? '' : WANT.kind === 'skin' ? `<img src="/skins/${encodeURIComponent(WANT.id)}-s.${IX}" alt="">` : WANT.kind === 'pack' && PK[WANT.id] ? spr(PK[WANT.id], PK[WANT.id].items[0], 44) : CODE[WANT.id] ? spr(CODE[WANT.id].p, CODE[WANT.id].it, 44) : '';
+function applyWant() { WANT.done = true; history.replaceState(null, '', location.pathname); const { kind, id } = WANT; surf = 'lid'; sel = -1;
+  if (kind === 'skin') { if (!/^ph-[a-z0-9-]+$/.test(id)) return toast('That design is not available'); if (!PHOTO.some(x => x[0] === id)) PHOTO.unshift([id, wantName().replace(/ skin$/, '')]);
+    snap(); skin.lid = id; tab = 'skins'; pane(); go('lid'); /* the first paint (already running) picks the skin up; a second paint here would race it */ toast(`${wantName()} is on your lid`); return; }
+  if (kind === 'pack') { const pk = PK[id]; if (!pk) return toast('That pack is not available'); ccat = pk.cat in CAT ? pk.cat : ccat; cpack = id; tab = 'stickers'; pane(); bomb(pk); toast(`${wantName()} added to your lid · Undo to clear`); return; }
+  const c = CODE[id]; if (!c) return toast('That sticker is not available'); ccat = c.p.cat in CAT ? c.p.cat : ccat; cpack = c.p.id; tab = 'stickers'; snap();
+  const o = { c: id, x: .5, y: .45, s: Math.min(.32, 7 / L.w), r: 0 }; items.lid.push(o); sel = items.lid.length - 1; pane(); refresh(); popIn([o], 'lid'); go('lid'); toast(`Sticker ${id} is on your lid · drag to move it`); }
+
 // ---------- step 1: find your laptop ----------
 let q = '', fTag = '', fBrand = '', shown = 40;
 const TAGS = [['', 'All'], ['s', 'Student'], ['p', 'Programmer'], ['g', 'Gamer'], ['c', 'Creator']];
 const BRANDS = [...new Set(LAPS.map(l => l.brand))];
 function vPick() {
-  app.innerHTML = `<div class="kr lbl"><span>Design · step 1 of 2</span><span>${LAPS.length} laptops</span></div>
-    <h1>Find your <em>laptop.</em></h1>
+  app.innerHTML = `${steps(1)}${WANT ? `<div class="want"><span class="wimg">${wantPic()}</span><span><b>${esc(wantName())}</b><small>Pick your laptop and we'll put it on straight away.</small></span></div>` : ''}
+    <h1>Find your <em>laptop.</em></h1><p class="psub">${LAPS.length} models with their real size, so your design fits.</p>
     <label class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="q" placeholder="Search: ThinkPad T14, MacBook Air, Victus…" value="${esc(q)}" autocomplete="off"></label>
     <div class="hs" id="ft">${TAGS.map(([k, n]) => `<button class="chip ${k === fTag ? 'on' : ''}" data-t="${k}">${n}</button>`).join('')}</div>
     <div class="hs" id="fb" style="margin-top:6px"><button class="chip ${!fBrand ? 'on' : ''}" data-b="">All brands</button>${BRANDS.map(b => `<button class="chip ${b === fBrand ? 'on' : ''}" data-b="${b}">${b}</button>`).join('')}</div>
@@ -610,11 +657,11 @@ const mode = '3d', realSet = () => null, phLayout = () => {}, phLid = () => {};
 
 // ---------- step 2: editor ----------
 const C0 = CAT.free || D.cats.find(c => !['xl', 'mix'].includes(c.id)) || D.cats[0];   // open on a full category, not the one-sticker lid centrepieces
-let tab = 'stickers', ccat = C0.id, cpack = C0.packs[0];
+let tab = 'skins', ccat = C0.id, cpack = C0.packs[0];
 async function vEditor() {
   if (!skinSize) skinSize = skinFor(L.scr);
   if (!THREE) { app.innerHTML = `<div class="stage" id="stage"><div class="load">Building your ${esc(L.brand)}…</div></div>`; await loadGL(); }
-  app.innerHTML = `<div class="ed"><div><div class="stage" id="stage"><div class="load">Building your ${esc(L.brand)}…</div>
+  app.innerHTML = `${steps(2)}<div class="ed"><div><div class="stage" id="stage"><span class="cmpb" id="cmpb" hidden>Before</span><div class="load">Building your ${esc(L.brand)}…</div>
       <div class="ovl t"><div class="name"><b>${esc(L.brand)} ${esc(L.name.replace(/ \(.+\)$/, ''))}</b><span class="lbl">${L.scr}″ · ${L.w} × ${L.d} cm · <a class="chg lbl" href="#pick" id="chg">Change</a></span></div>
         <div class="ovr"><button class="fsb" id="fsb" aria-label="Full screen"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button></div></div>
       <span class="hint" id="hint">Drag to turn · pinch to zoom</span>
@@ -627,10 +674,11 @@ async function vEditor() {
       <div class="selbar" id="selbar" hidden><span class="lbl">Size <b id="szl" style="color:#fff;font-weight:500;letter-spacing:.04em"></b></span><input type="range" id="ssz" min="4" max="60" step="1"><span class="lbl">Turn</span><input type="range" id="srt" min="-180" max="180" step="1">
         <div class="btns"><button id="sdel">Remove</button><button id="sup">To front</button><button class="w" id="sok">Done</button></div></div></div>
     <aside class="drawer">
-      <div class="addto"><span class="lbl">Adding to</span><div class="seg" id="surf" style="flex:1;margin-left:12px">${Object.entries(SN).map(([k, n]) => `<button data-s="${k}">${n}<i></i></button>`).join('')}</div></div>
-      <div class="seg" id="tab"><button data-t="stickers">Stickers</button><button data-t="skins">Skins</button><button data-t="colour">Colour</button></div>
-      <div id="pane"></div>
-      <div class="acts"><button class="btn" id="undo" aria-label="Undo">↶ Undo</button><button class="btn" id="redo" aria-label="Redo">↷ Redo</button><button class="btn" id="reset" aria-label="Start again">Reset</button><button class="btn" id="shot">Save</button><button class="btn y" id="cart">Add to cart</button></div>
+      <div class="dsec"><div class="dh"><span class="dn">1</span><b>Choose a surface</b></div><div class="seg" id="surf">${Object.entries(SN).map(([k, n]) => `<button data-s="${k}">${n}<i></i></button>`).join('')}</div></div>
+      <div class="dsec dgrow"><div class="dh"><span class="dn">2</span><b>Pick your design</b></div><div class="seg" id="tab"><button data-t="skins">Skins</button><button data-t="stickers">Stickers</button><button data-t="colour">Colour</button></div>
+      <div id="pane"></div></div>
+      <div class="dsec"><div class="dh"><span class="dn">3</span><b>Review &amp; add to cart</b><button class="rst" id="reset" type="button">Start again</button></div>
+      <div class="acts"><button class="btn" id="undo" aria-label="Undo">↶ Undo</button><button class="btn" id="redo" aria-label="Redo">↷ Redo</button><button class="btn" id="cmp" aria-pressed="false">Before / after</button><button class="btn" id="shot">Save design</button><button class="btn y" id="cart">Add to cart</button></div></div>
     </aside></div>`;
   PT('editor-html'); if (!R) initGL($('#stage')); else { $('#stage').appendChild(R.domElement); RO.disconnect(); RO.observe($('#stage')); resize(); }
   PT('initGL'); $('#stage .load').remove(); build(); PT('build'); const [hp, ht] = viewPos('hero'); cam.position.copy(hp); ctl.target.copy(ht); setLid(110); idle = true;
@@ -658,7 +706,14 @@ async function vEditor() {
   $('#shot').onclick = () => { const n = Object.values(items).flat().length + Object.values(skin).filter(Boolean).length; if (!n) return toast('Add a sticker or a skin first');
     saveMine(v3()); toast('Saved to Inspo → Mine'); };
   $('#cart').onclick = () => { const n = Object.values(items).flat().length, k = Object.values(skin).filter(Boolean).length; if (!n && !k) return toast('Add a sticker or a skin first'); sel = -1; refresh(); schedule(surf); packSheet(); };
+  let cmpS = null;   // before / after: take the design off for a moment, then put it back exactly as it was
+  const cmpOff = () => { if (!cmpS) return; const o = JSON.parse(cmpS); cmpS = null; Object.assign(items, o.items); Object.assign(skin, o.skin); ['lid', 'kb', 'bot'].forEach(x => { paint(x); syncStickers(x); }); $('#cmp').setAttribute('aria-pressed', 'false'); $('#cmp').textContent = 'Before / after'; $('#cmpb').hidden = true; document.body.classList.remove('cmping'); refresh(); };
+  $('#cmp').onclick = () => { if (cmpS) return cmpOff(); if (!Object.values(items).flat().length && !Object.values(skin).some(Boolean)) return toast('Add a skin or a sticker first');
+    sel = -1; cmpS = JSON.stringify({ items, skin }); for (const k in items) items[k] = []; for (const k in skin) skin[k] = ''; ['lid', 'kb', 'bot'].forEach(x => { paint(x); syncStickers(x); });
+    $('#cmp').setAttribute('aria-pressed', 'true'); $('#cmp').textContent = 'Show after'; $('#cmpb').hidden = false; document.body.classList.add('cmping'); updateTF(); };
+  $('.drawer').addEventListener('pointerdown', e => { if (cmpS && !e.target.closest('#cmp')) cmpOff(); }, true);
   pane(); refresh(); PT('pane');
+  if (WANT && !WANT.done) applyWant();
 }
 const toPhotoOrGL = () => false;
 // fill a surface with a whole pack, packed like a real sticker-bomb (big ones first, a little overlap, random turns)
@@ -737,12 +792,12 @@ function refresh() { save3();
 function pane() {
   const p = $('#pane'); refresh();
   if (tab === 'stickers') { const c = CAT[ccat], pk = PK[cpack]; warmAtlas(c.packs);
-    p.innerHTML = `<div class="hs" id="cats">${D.cats.map(x => `<button class="chip ${x.id === ccat ? 'on' : ''}" data-c="${x.id}">${esc(x.name)}</button>`).join('')}</div>
-      <div class="hs" id="packs">${c.packs.map(id => `<button class="chip ${id === cpack ? 'on' : ''}" data-p="${id}" style="height:32px;font-size:12.5px">${esc(PK[id].name)}</button>`).join('')}</div>
+    p.innerHTML = `<div class="sel2"><label><span class="lbl">Category</span><select id="cats">${D.cats.map(x => `<option value="${x.id}" ${x.id === ccat ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></label>
+      <label><span class="lbl">Pack</span><select id="packs">${c.packs.map(id => `<option value="${id}" ${id === cpack ? 'selected' : ''}>${esc(PK[id].name.charAt(0) + PK[id].name.slice(1).toLowerCase())}</option>`).join('')}</select></label></div>
       <button class="bomb" id="bomb"><span>Sticker-bomb the ${SN[surf].toLowerCase()}</span><small>${esc(pk.name.charAt(0) + pk.name.slice(1).toLowerCase())} · ${Math.min(pk.items.length, BOMBN)} stickers in one tap</small></button>
       <div class="tray" id="tray">${pk.items.map(it => `<button class="tile" data-k="${it[0]}">${spr(pk, it, 48)}<span class="c">${it[0]}</span></button>`).join('')}</div>`;
-    $('#cats').onclick = e => { const b = e.target.closest('[data-c]'); if (b) { ccat = b.dataset.c; cpack = CAT[ccat].packs[0]; pane(); } };
-    $('#packs').onclick = e => { const b = e.target.closest('[data-p]'); if (b) { cpack = b.dataset.p; pane(); } };
+    $('#cats').onchange = e => { ccat = e.target.value; cpack = CAT[ccat].packs[0]; pane(); };
+    $('#packs').onchange = e => { cpack = e.target.value; pane(); };
     $('#bomb').onclick = () => bomb(pk);
     $('#tray').onclick = e => { const b = e.target.closest('[data-k]'); if (!b) return; snap(); const W = surf === 'kb' ? [.2 + Math.random() * .6, .72 + Math.random() * .18] : [.2 + Math.random() * .6, .2 + Math.random() * .6];
       const o = { c: b.dataset.k, x: W[0], y: W[1], s: Math.min(.3, 5.5 / L.w), r: Math.round(Math.random() * 16 - 8) };
@@ -779,6 +834,7 @@ if (LL) { L = LL; col = L.cols.includes(fromLink.c) ? fromLink.c : L.cols[0]; fo
   Object.assign(skin, { lid: '', kb: '', bot: '', pad: '', ...(fromLink.k || {}) }); vEditor(); toast('Design from an order'); } else if (st && LAPS[st.i] && location.hash !== '#pick') { L = LAPS[st.i]; col = L.cols.includes(st.col) ? st.col : L.cols[0];
   for (const k in items) items[k] = (st.items && st.items[k] || []).filter(o => CODE[o.c]); Object.assign(skin, st.skin || {}); vEditor(); } else { vPick(); warmGL(); } warmGL();
 addEventListener('hashchange', () => { if (location.hash === '#pick') vPick(); });
+(() => { const n = Object.values(store.get('sl-packs', {}) || {}).reduce((a, b) => a + b, 0) + Object.values(store.get('sl-cart', {}) || {}).reduce((a, b) => a + b, 0) + (store.get('sl-dsg', null) ? 1 : 0); const b = $('#hbd'); if (b && n) { b.hidden = false; b.textContent = n; } })();
 fetch('/free/free.json').then(r => r.ok ? r.json() : null).then(f => { if (!f) return; try { localStorage.setItem('sl-free-cat', JSON.stringify(f)); } catch (e) {} if (addFree(f) && $('#tray')) { ccat = 'free'; cpack = 'free-stickers'; pane(); } }).catch(() => {});
 fetch('/api/catalog/').then(r => r.ok ? r.json() : null).then(c => { if (!c) return; try { localStorage.setItem('sl-drops', JSON.stringify(c)); } catch (e) {} if (addDrops(c) && $('#tray')) pane(); }).catch(() => {});
 </script></body></html>
