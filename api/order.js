@@ -51,7 +51,7 @@ export default async function handler(req, res) {
     picks = { size: str(b.picks.size, 4), n: +b.picks.n || 0, scaled: !!b.picks.scaled, layout: Array.isArray(b.picks.layout) ? b.picks.layout.slice(0, 300) : [] };
     if (sh) picks.sheet = (await put(`${dir}/picks.jpg`, sh, { access: 'public', addRandomSuffix: false, contentType: 'image/jpeg' })).url; }
   const clientTotal = Math.round((+b.total || 0) * 100) / 100, total = pr.total;
-  const ck = { id, at: Date.now(), status: 'pending', name, phone, email, loc, note, packs, singles, picks, free: fr, design, total,
+  const ck = { id, at: Date.now(), status: 'pending', name, phone, email, loc, note, laptop: str(b.laptop, 80), packs, singles, picks, free: fr, design, total,
     ...(clientTotal !== total ? { clientTotal } : {}), skinOnDM: false, attempts: [] };
   if (!(total > 0)) return json(res, 400, { error: 'Nothing to pay in this cart' });
   let pay; try { pay = await startPayment(ck, baseOf(req)); } catch (e) { return json(res, 502, { error: e.message || 'Paystack is not answering, try again' }); }

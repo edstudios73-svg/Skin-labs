@@ -200,7 +200,7 @@ function list() {
   const n = k => orders.filter(o => stage(o) === k).length, shown = orders.filter(o => stage(o) === tab);
   if (tab === 'done') shown.reverse();
   const todo = orders.filter(o => stage(o) === 'todo'), cnt = {}; todo.forEach(o => jobs(o).forEach(j => cnt[j.chip] = (cnt[j.chip] || 0) + j.q));
-  app.innerHTML = `<header class="top"><div class="row"><b class="brand">Skin Lab<span>print queue</span></b><div class="me"><span class="who">${esc(ME())}</span><button class="ib" id="lo">Log out</button></div></div></header>
+  app.innerHTML = `<header class="top"><div class="row"><b class="brand">Skin Lab<span>print queue</span></b><div class="me"><a class="ib" href="/production/" style="text-decoration:none">Print Production</a><span class="who">${esc(ME())}</span><button class="ib" id="lo">Log out</button></div></div></header>
   <div class="w"><span class="lbl">${new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</span><h1>${n('todo') ? `${n('todo')} to <em>print.</em>` : 'All <em>caught up.</em>'}</h1>
     ${todo.length ? `<div class="sumbox">${Object.entries(cnt).map(([k, v]) => `<div><b>${v}</b><small>${esc(k)}${SHEET[k] ? ' sheet' : ''}</small></div>`).join('')}</div>` : ''}
     <div class="tabs" id="tabs">${TABS.map(([k, t]) => `<button data-t="${k}" class="${k === tab ? 'on' : ''}">${t}<i>${n(k)}</i></button>`).join('')}</div>

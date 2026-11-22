@@ -167,7 +167,7 @@ function badge() { const n = orders.filter(o => o.status === 'new').length; docu
 
 // ---------- top bar ----------
 const topbar = v => { const nNew = orders.filter(o => o.status === 'new').length, nOpen = tickets ? tickets.filter(t => t.status !== 'resolved').length : 0, nRev = reviews ? reviews.filter(r => r.status === 'pending').length : 0;
-  return `<header class="top"><div class="row"><b class="brand">Skin Lab<span>admin</span></b><div class="me"><span class="who" title="Changes are recorded under this name">${esc(ME())}${ROLE !== 'owner' ? ` · ${ROLE}` : ''}</span><button class="ib" id="lo" aria-label="Log out">Log out</button></div></div>
+  return `<header class="top"><div class="row"><b class="brand">Skin Lab<span>admin</span></b><div class="me"><a class="ib" href="/production/" style="text-decoration:none">Print Production</a><span class="who" title="Changes are recorded under this name">${esc(ME())}${ROLE !== 'owner' ? ` · ${ROLE}` : ''}</span><button class="ib" id="lo" aria-label="Log out">Log out</button></div></div>
   <nav class="nav" aria-label="Sections">${[['orders', 'Orders', nNew], ['payments', 'Payments', 0], ['support', 'Support', nOpen], ['reviews', 'Reviews', nRev], ...(ROLE === 'owner' ? [['pricing', 'Pricing', 0], ['stickers', 'Stickers', 0]] : [])].map(([k, n, c]) => `<button class="${v === k ? 'on' : ''}" data-v="${k}">${n}${c ? `<i>${c}</i>` : ''}</button>`).join('')}</nav></header>`; };
 function wireTop() {
   app.querySelector('.nav').onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; history.replaceState(null, '', b.dataset.v === 'orders' ? location.pathname : '#' + b.dataset.v); route(b.dataset.v); };

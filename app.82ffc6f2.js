@@ -280,7 +280,7 @@ async function placeOrder() {
   if (!phoneOk(who.phone || '')) { ferr('phone', 'Use a WhatsApp number like 024 123 4567 or +233 24 123 4567'); $('#c-phone').focus(); return; }
   const btn = $('#c-send'); btn.disabled = true; btn.textContent = 'Preparing your order…';
   let art = []; if (dg) try { if (Object.values(dg.skin || {}).some(v => String(v).startsWith('up:'))) { btn.textContent = 'Uploading your picture…'; art = await uploadArt(dg); } } catch (e) { btn.disabled = false; btn.textContent = 'Try again'; return toast(e.message); }
-  const body = { name: who.name, phone: phoneIntl(who.phone), email: who.email || '', loc: who.loc, total: money(),
+  const body = { name: who.name, phone: phoneIntl(who.phone), email: who.email || '', loc: who.loc, total: money(), laptop: (myLap() || {}).n || '',
     packs: pk.map(([k, q]) => { const o = pkOf(k); return { key: k, label: o.skin ? `${o.label} (${o.fit})` : `${o.p.nice} · ${SZ[o.size]}`, size: o.size, n: o.n, q, price: o.price }; }),
     singles: items.map(([c, q]) => ({ code: c, q, pack: CODE[c].p.nice, img: new URL(stickerSrc(c), location.href).href })),
     free: (() => { const c = dsgFree() || freeCode(), x = FREE.find(f => f.code === c); return x ? { code: c, name: x.name, img: new URL(`free/${c}.webp`, location.href).href, onDesign: !!dsgFree() } : null; })(),
@@ -341,7 +341,7 @@ function buyNow(k) {
     if (!phoneOk(who.phone || '')) { qerr('phone', 'Use a WhatsApp number like 024 123 4567'); $('#q-phone').focus(); return; }
     const btn = $('#qb-go'); btn.disabled = true; btn.textContent = 'Opening Paystack…';
     const fc = freeCode(), fx = FREE.find(f => f.code === fc);
-    const body = { name: who.name, phone: phoneIntl(who.phone), email: who.email || '', loc: who.loc, total: o.price,
+    const body = { name: who.name, phone: phoneIntl(who.phone), email: who.email || '', loc: who.loc, total: o.price, laptop: (myLap() || {}).n || '',
       packs: [{ key: k, label: (o.skin || o.decal) ? `${o.label} (${o.fit})` : `${o.p.nice} · ${SZ[o.size]}`, size: o.size, n: o.n, q: 1, price: o.price }], singles: [],
       free: fx ? { code: fc, name: fx.name, img: new URL(`free/${fc}.webp`, location.href).href, onDesign: false } : null };
     try {

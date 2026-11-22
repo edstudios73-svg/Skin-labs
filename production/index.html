@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Print Production · Skin Lab</title><meta name="robots" content="noindex"><meta name="theme-color" content="#000000">
+<link rel="icon" href="/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}[hidden]{display:none!important}
+:root{--line:rgba(255,255,255,.14);--line2:rgba(255,255,255,.3);--mute:#8c8c8c;--ok:#7ee2a2;--warn:#ffcf7a;--bad:#ff9c8f}
+html,body{background:#000;color:#fff;font:15px/1.5 Geist,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}button{background:none;border:0;cursor:pointer}a{color:inherit}
+.lbl{font:400 10.5px/1.4 'Geist Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.wrap{max-width:1320px;margin:0 auto;padding:0 max(16px,env(safe-area-inset-left)) 60px}
+.top{position:sticky;top:0;z-index:10;background:rgba(0,0,0,.9);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:14px;height:64px;padding-bottom:0}
+.brand{font-weight:600;font-size:19px;letter-spacing:-.04em}.brand small{font:400 10px 'Geist Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-left:10px}
+.who{margin-left:auto;display:flex;align-items:center;gap:10px}.role{border:1px solid var(--line2);padding:5px 9px;font:500 10.5px 'Geist Mono',monospace;letter-spacing:.1em;text-transform:uppercase}
+.role.p{background:#fff;color:#000;border-color:#fff}
+.lnk{font-size:13px;border-bottom:1px solid #555}
+h1{font:400 clamp(40px,7vw,68px)/1 'Instrument Serif',serif;letter-spacing:-.02em;margin:28px 0 6px}h1 em{font-style:italic;color:#bdbdbd}
+h2{font:400 28px/1.1 'Instrument Serif',serif;margin-bottom:12px}
+.sub{color:var(--mute);margin-bottom:22px}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin:8px 0 26px}
+@media (min-width:900px){.tiles{grid-template-columns:repeat(4,1fr)}}
+.tile{background:#000;padding:16px;text-align:left;display:grid;gap:4px;min-height:96px}.tile b{font:400 40px/1 'Instrument Serif',serif}.tile.on{background:#fff;color:#000}.tile.on .lbl{color:#555}
+.tile.bad b{color:var(--bad)}.tile.on.bad b{color:#c0392b}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
+.seg{display:flex;border:1px solid var(--line)}.seg button{padding:10px 14px;font-size:13px;color:#bbb}.seg button.on{background:#fff;color:#000}
+.list{border-top:1px solid var(--line)}
+.row{display:grid;grid-template-columns:64px 1fr auto;gap:14px;align-items:center;padding:14px 0;border-bottom:1px solid var(--line);width:100%;text-align:left}
+.row:hover{background:#0b0b0b}.pic{width:64px;height:48px;background:#111 center/cover;border:1px solid var(--line)}
+.row b{font-weight:500}.row .m{color:var(--mute);font-size:13px}.row .r{text-align:right;display:grid;gap:4px;justify-items:end}
+.pill{display:inline-block;padding:4px 8px;font:500 10px 'Geist Mono',monospace;letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--line2)}
+.pill.new{border-color:#fff}.pill.failed{border-color:var(--bad);color:var(--bad)}.pill.files-ready,.pill.downloaded{border-color:var(--ok);color:var(--ok)}.pill.completed,.pill.dispatch{background:#fff;color:#000;border-color:#fff}
+.warnn{color:var(--warn);font-size:12px}
+.empty{padding:50px 0;text-align:center;color:var(--mute)}
+/* job page */
+.jh{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px;margin:22px 0 18px}
+.grid{display:grid;gap:14px}@media (min-width:1000px){.grid{grid-template-columns:1.25fr 1fr;align-items:start}}
+.card{border:1px solid var(--line);padding:20px}.card+.card{margin-top:14px}
+.kv{display:grid;grid-template-columns:150px 1fr;gap:8px 14px;font-size:14px}.kv dt{color:var(--mute)}
+.items{list-style:none;border-top:1px solid var(--line)}.items li{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}.items small{display:block;color:var(--mute);font-size:12px}
+.arts{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}.arts figure{border:1px solid var(--line)}.arts img{width:100%;aspect-ratio:3/2;object-fit:cover;display:block;background:#111}.arts figcaption{padding:6px 8px;font-size:12px;color:#bbb}
+.steps{list-style:none;display:grid;gap:0}.steps li{display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.steps i{width:14px;height:14px;border:1px solid #555;border-radius:50%}.steps li.done i{background:#fff;border-color:#fff}.steps li.cur i{box-shadow:0 0 0 4px rgba(255,255,255,.2);background:#fff}
+.steps li.done span,.steps li.cur span{color:#fff}.steps span{color:#888}.steps button{font-size:12px;border:1px solid var(--line2);padding:6px 10px}.steps button:hover{border-color:#fff}
+.files{list-style:none}.files li{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px;align-items:center}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 16px;border:1px solid #fff;font-weight:500;width:100%}
+.btn.w{background:#fff;color:#000}.btn[disabled]{opacity:.35;cursor:not-allowed}
+.dl{display:grid;gap:8px}@media (min-width:700px){.dl{grid-template-columns:1fr 1fr}.dl .btn.w{grid-column:1/-1}}
+.note{border-left:2px solid var(--warn);padding:10px 12px;background:#141008;color:#eee;font-size:13px;margin-top:10px}
+.lock{border:1px dashed var(--line2);padding:14px;color:#bbb;font-size:13px}
+.log{list-style:none;font-size:13px}.log li{padding:8px 0;border-bottom:1px solid var(--line);display:grid;gap:2px}.log small{color:var(--mute)}
+textarea,input[type=text],input[type=password]{width:100%;background:#000;border:1px solid var(--line2);padding:11px 12px}
+.login{max-width:400px;margin:12vh auto;display:grid;gap:10px}.err{color:var(--bad);font-size:13px;min-height:18px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#fff;color:#000;padding:10px 16px;font:500 12px 'Geist Mono',monospace;letter-spacing:.06em;z-index:50}
+</style></head>
+<body><div id="app"></div><div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<script>
+// Skin Lab · Print Production. One page for both roles; the server decides what each role may see and do.
+const $ = s => document.querySelector(s), app = $('#app');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k) || ''; if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { return ''; } };
+const KEY = () => ls('sl-prod') || ls('sl-print') || ls('sl-admin'), ME = () => ls('sl-prod-name') || ls('sl-print-name') || ls('sl-admin-name') || 'Staff';
+const toast = m => { const t = $('#toast'); t.textContent = m; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 2600); };
+const when = t => new Date(t).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+async function api(q, body) {
+  const r = await fetch('/api/production/' + (q || ''), { method: body ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json', 'x-admin-key': KEY(), 'x-admin-name': ME() }, body: body ? JSON.stringify(body) : undefined });
+  const j = await r.json().catch(() => ({})); if (r.status === 401) { login('Wrong password'); throw new Error('login'); } if (!r.ok) throw new Error(j.error || 'Something went wrong'); return j;
+}
+let ME_ = null, JOBS = [], NAMES = {}, STAGES = [], F = 'all';
+const TILES = [['new', 'New paid orders', j => j.stage === 'new'], ['await', 'Files awaiting generation', j => j.stage === 'new' && !j.files && !j.failed], ['generating', 'Files generating', j => j.stage === 'generating'],
+  ['ready', 'Files ready for download', j => ['files-ready', 'downloaded'].includes(j.stage)], ['failed', 'Generation failures', j => j.failed], ['printing', 'Currently printing', j => j.stage === 'printing'],
+  ['cutting', 'Awaiting cutting', j => j.stage === 'cutting'], ['done', 'Completed jobs', j => ['completed', 'dispatch'].includes(j.stage)]];
+function login(msg) {
+  app.innerHTML = `<div class="wrap"><div class="login"><span class="lbl">Skin Lab</span><h1>Print <em>Production</em></h1>
+    <input type="password" id="pw" placeholder="Your admin or printer password" autocomplete="current-password" aria-label="Password"><input type="text" id="nm" placeholder="Your name" value="${esc(ME() === 'Staff' ? '' : ME())}" aria-label="Your name">
+    <button class="btn w" id="go">Open Print Production</button><p class="err" role="alert">${esc(msg || '')}</p></div></div>`;
+  $('#go').onclick = () => { ls('sl-prod', $('#pw').value.trim()); ls('sl-prod-name', $('#nm').value.trim() || 'Staff'); boot(); };
+  $('#pw').onkeydown = e => { if (e.key === 'Enter') $('#go').click(); };
+}
+const head = () => `<header class="top"><div class="wrap"><a class="brand" href="#" style="text-decoration:none">Skin Lab<small>Print production</small></a>
+  <div class="who"><span class="role ${ME_.role === 'printing' ? 'p' : ''}">${ME_.role === 'printing' ? 'Printing Administrator' : 'General Administrator'}</span><span class="lbl">${esc(ME())}</span>
+  <a class="lnk" href="${ME_.role === 'printing' ? '/printer/' : '/admin/'}">${ME_.role === 'printing' ? 'Print queue' : 'Admin'}</a><button class="lnk" id="out">Sign out</button></div></div></header>`;
+async function boot() { if (!KEY()) return login(); try { ME_ = await api('?a=me'); } catch (e) { return; } route(); }
+function route() { const h = location.hash.slice(1); if (/^SL-[2-9A-Z]{5}$/.test(h)) job(h); else dash(); }
+addEventListener('hashchange', route);
+async function dash() {
+  app.innerHTML = `${head()}<main class="wrap"><span class="lbl" style="display:block;margin-top:26px">Paid orders only · newest first</span><h1>Print <em>Production</em></h1>
+    <p class="sub">${ME_.canDownload ? 'Prepare every paid order for the printer and the cutter. Download files, then move each job along.' : 'Monitor every paid order through production. Downloads are for the Printing Administrator.'}</p>
+    <div class="tiles" id="tiles"></div><div class="bar"><div class="seg" id="seg"><button data-f="all">All jobs</button><button data-f="open">In production</button><button data-f="done">Completed</button></div><span class="lbl" id="cnt"></span></div>
+    <div class="list" id="list"><div class="empty">Loading…</div></div></main>`;
+  $('#out').onclick = () => { ls('sl-prod', null); login(); };
+  try { const j = await api('?a=jobs'); JOBS = j.jobs; NAMES = j.names; STAGES = j.stages; } catch (e) { if (e.message !== 'login') $('#list').innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+  const draw = () => {
+    $('#tiles').innerHTML = TILES.map(([k, n, fn]) => `<button class="tile ${F === k ? 'on' : ''} ${k === 'failed' && JOBS.some(fn) ? 'bad' : ''}" data-f="${k}"><span class="lbl">${n}</span><b>${JOBS.filter(fn).length}</b></button>`).join('');
+    document.querySelectorAll('#seg [data-f]').forEach(b => b.classList.toggle('on', b.dataset.f === F));
+    const fn = (TILES.find(t => t[0] === F) || [])[2] || (F === 'open' ? j => !['completed', 'dispatch'].includes(j.stage) : F === 'done' ? j => ['completed', 'dispatch'].includes(j.stage) : () => true), list = JOBS.filter(fn);
+    $('#cnt').textContent = `${list.length} job${list.length === 1 ? '' : 's'}`;
+    $('#list').innerHTML = list.length ? list.map(j => `<a class="row" href="#${j.id}" style="text-decoration:none"><span class="pic" style="${j.pic ? `background-image:url('${esc(j.pic)}')` : ''}"></span>
+      <span><b>${esc(j.id)}</b> · ${esc(j.name)}<br><span class="m">${esc(j.laptop || (j.surfaces.length ? 'Laptop model not given' : 'Stickers only'))}${j.surfaces.length ? ' · ' + j.surfaces.map(s => ({ lid: 'Lid', kb: 'Keyboard', pad: 'Trackpad', bot: 'Bottom' })[s] || s).join(', ') : ''} · ${j.items} item${j.items === 1 ? '' : 's'}</span>${j.warnings ? `<br><span class="warnn">⚠ ${j.warnings} check${j.warnings > 1 ? 's' : ''} need attention</span>` : ''}</span>
+      <span class="r"><span class="pill ${j.failed ? 'failed' : j.stage}">${esc(j.failed ? NAMES.failed : NAMES[j.stage])}</span><span class="m">${j.updated ? esc(j.updated.by.replace(/ \(.+\)$/, '')) + ' · ' + when(j.updated.at) : ''}</span></span></a>`).join('')
+      : `<div class="empty">No jobs here yet. Paid orders appear automatically.</div>`;
+  };
+  $('#tiles').onclick = e => { const b = e.target.closest('[data-f]'); if (b) { F = F === b.dataset.f ? 'all' : b.dataset.f; draw(); } };
+  $('#seg').onclick = e => { const b = e.target.closest('[data-f]'); if (b) { F = b.dataset.f; draw(); } };
+  draw();
+}
+const SURF = { lid: 'Laptop lid', kb: 'Keyboard deck', pad: 'Trackpad', bot: 'Bottom cover' };
+const KIND = { skin: 'Laptop skin', keyboard: 'Keyboard skin', 'sticker-pack': 'Sticker pack', singles: 'Single stickers', 'free-sticker': 'Free sticker', 'custom-stickers': 'Custom sticker pack', decal: 'Laptop Art (cut vinyl)' };
+const CUT = { skin: 'Template outline + cutouts', keyboard: 'Individual key cutouts', 'sticker-pack': 'Kiss-cut contours', singles: 'Kiss-cut contours', 'free-sticker': 'Kiss-cut contour', 'custom-stickers': 'Kiss-cut contours', decal: 'Weeded vinyl outline' };
+async function job(id) {
+  app.innerHTML = `${head()}<main class="wrap"><div class="empty">Loading ${esc(id)}…</div></main>`; $('#out').onclick = () => { ls('sl-prod', null); login(); };
+  let d; try { d = await api(`?a=job&id=${id}`); } catch (e) { if (e.message !== 'login') $('main').innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+  const { job: j, order: o } = d, P = ME_.canDownload, at = d.stages.indexOf(j.stage);
+  $('main').innerHTML = `<div class="jh"><div><a class="lbl" href="#" style="text-decoration:none">← All jobs</a><h1>${esc(o.id)}</h1><span class="lbl">Paid ${when(o.paid.at)}${o.paid.amount ? ` · GH₵${o.paid.amount}` : ''} · ${esc(o.paid.channel === 'mobile_money' ? 'MoMo' : o.paid.channel || '')}</span></div>
+      <span class="pill ${j.failed ? 'failed' : j.stage}">${esc(j.failed ? d.names.failed : d.names[j.stage])}</span></div>
+    <div class="grid"><div>
+      <section class="card"><h2>Order</h2><dl class="kv"><dt>Customer</dt><dd>${esc(o.name)}</dd>${o.phone ? `<dt>WhatsApp</dt><dd>+${esc(o.phone)}</dd>` : ''}<dt>Location</dt><dd>${esc(o.loc || '—')}</dd><dt>Order date</dt><dd>${when(o.at)}</dd>
+        <dt>Laptop</dt><dd>${j.laptop ? esc(j.laptop) : j.surfaces.length ? '<span style="color:var(--warn)">Not given · confirm with the customer before cutting</span>' : 'No laptop (stickers only)'}</dd><dt>Surfaces</dt><dd>${j.surfaces.length ? j.surfaces.map(s => SURF[s] || s).join(', ') : '—'}</dd>${o.note ? `<dt>Customer note</dt><dd>${esc(o.note)}</dd>` : ''}</dl></section>
+      <section class="card"><h2>What to make</h2><ul class="items">${j.items.map(i => `<li><span>${esc(i.label)}<small>${esc(KIND[i.kind] || i.kind)}${i.surface ? ' · ' + esc(SURF[i.surface] || i.surface) : ''}${i.size ? ' · ' + esc(i.size) : ''} · ${esc(CUT[i.kind] || '')}</small></span><b>×${i.q}</b></li>`).join('')}</ul></section>
+      ${(o.design && (o.design.art || []).length) || (o.design && o.design.mock) ? `<section class="card"><h2>Customer artwork</h2><div class="arts">${o.design.mock ? `<figure><img src="${esc(o.design.mock)}" alt="Laptop preview"><figcaption>Their laptop preview</figcaption></figure>` : ''}${(o.design.art || []).map(a => `<figure><img src="${esc(a.url)}" alt=""><figcaption>${esc(SURF[a.surface] || a.surface)} · ${a.w}×${a.h}px</figcaption></figure>`).join('')}</div></section>` : ''}
+      <section class="card"><h2>Production dimensions</h2>${j.surfaces.length ? `<div class="note">Production templates arrive in the next phase. Until a laptop model has a verified template, every surface is marked <b>needs manual verification</b> and no automatic cutting file is produced.</div>` : '<p class="sub" style="margin:0">Stickers only: sheet sizes come from the products.</p>'}</section>
+    </div><div>
+      <section class="card"><h2>Production files</h2>${(j.files || []).length ? `<ul class="files">${j.files.map(f => `<li><span>${esc(f.name)}<br><span class="lbl">${esc(f.type || '')}${f.bytes ? ' · ' + (f.bytes / 1e6).toFixed(1) + ' MB' : ''}</span></span>${P ? `<button class="lnk" data-dl="${esc(f.name)}">Download</button>` : ''}</li>`).join('')}</ul>` : '<p class="sub" style="margin:0 0 12px">Not generated yet.</p>'}
+        ${P ? `<div class="dl"><button class="btn w" disabled>Download complete package</button>${['General order PNG', 'Transparent artwork', 'Sticker cutlines', 'Laptop skin cutlines', 'Keyboard cutlines', 'Production instructions'].map(n => `<button class="btn" disabled>${n}</button>`).join('')}</div>`
+          : `<div class="lock">Production files are downloaded by the Printing Administrator. You can follow their status here.</div>`}</section>
+      <section class="card"><h2>Production status</h2><ol class="steps">${d.stages.map((s, i) => `<li class="${i < at ? 'done' : i === at ? 'cur' : ''}"><i></i><span>${esc(d.names[s])}</span>${P && i > at && !['generating', 'files-ready'].includes(s) ? `<button data-st="${s}">Mark</button>` : ''}</li>`).join('')}</ol>
+        ${P ? `<textarea id="nt" rows="2" placeholder="Note for the team (optional)" style="margin-top:12px"></textarea>` : ''}</section>
+      <section class="card"><h2>Activity</h2><ul class="log">${[...j.log].reverse().map(l => `<li><span><b>${esc(d.names[l.stage] || l.stage)}</b>${l.note ? ' · ' + esc(l.note) : ''}</span><small>${esc(l.by)} · ${when(l.at)}</small></li>`).join('')}</ul></section>
+    </div></div>`;
+  document.querySelectorAll('[data-st]').forEach(b => b.onclick = async () => { b.disabled = true; try { await api('', { a: 'stage', id, stage: b.dataset.st, note: ($('#nt') || {}).value || '' }); toast(`${id} · ${d.names[b.dataset.st]}`); job(id); } catch (e) { b.disabled = false; toast(e.message); } });
+}
+boot();
+</script></body></html>
