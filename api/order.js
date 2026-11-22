@@ -1,6 +1,9 @@
-// POST /api/order : a customer places an order. The server prices it from its own list, saves it, tells the shop.
+// POST /api/order : a customer checks out. The server prices the cart from its own list and saves it as a CHECKOUT
+// (checkouts/<id>-<secret>/), then starts the Paystack payment. Staff never see a checkout: the order is created in
+// orders/ only after Paystack confirms the payment (confirmPayment in _lib.js), so unpaid carts never reach the admin.
 import { put } from './_blob.js';
-import { json, newId, secret, saveOrder, pushAll, priceOrder, limited, ghPhone, SITE } from './_lib.js';
+import { list } from './_blob.js';
+import { json, newId, secret, saveCheckout, startPayment, baseOf, payOn, priceOrder, limited, ghPhone, SITE } from './_lib.js';
 import PR from './_prices.js';
 
 const img = (d, max) => { if (typeof d !== 'string' || !d.startsWith('data:image/jpeg;base64,')) return null; const b = Buffer.from(d.slice(23), 'base64'); return b.length && b.length <= max ? b : null; };
@@ -8,6 +11,7 @@ const str = (s, n) => String(s ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().sl
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return json(res, 405, { error: 'POST only' });
+  if (!payOn()) return json(res, 503, { error: 'Online payment is switched off right now, so we cannot take orders here. Chat with us on WhatsApp and we will help you order', wa: true });
   if (limited(req, 'order', 30, 10 * 60e3)) return json(res, 429, { error: 'Too many orders from this phone in a short time. Wait a few minutes, or chat with us on WhatsApp' });
   const b = req.body || {};
   const name = str(b.name, 60), phone = ghPhone(b.phone), loc = str(b.loc, 80), note = str(b.note, 300);
@@ -20,11 +24,22 @@ export default async function handler(req, res) {
   if (!packs.length && !singles.length && !d) return json(res, 400, { error: 'The cart is empty' });
   const design = d ? { line: str(d.line, 300), laptop: str(d.laptop, 80), packName: str(d.packName, 60), size: str(d.size, 4), n: +d.n || 0, skins: Array.isArray(d.skins) ? d.skins.slice(0, 4).map(x => str(x, 40)) : [], skinSize: /^[SMLC]$/.test(d.skinSize) ? d.skinSize : '',
     layout: Array.isArray(d.layout) ? d.layout.slice(0, 300) : [], scaled: !!d.scaled, raw: d.raw && typeof d.raw === 'object' ? d.raw : null } : null;
+  if (design && Array.isArray(d.art) && d.art.length) {   // the customer's own pictures, one per surface, with how they were placed
+    const art = [];
+    for (const a of d.art.slice(0, 4)) {
+      const path = String(a && a.path || ''); if (!/^uploads\/[a-z0-9]{20}\/art\.(jpg|png)$/.test(path)) return json(res, 400, { error: 'Your picture did not upload. Try again' });
+      const { blobs } = await list({ prefix: path.slice(0, path.lastIndexOf('/') + 1) }); const blob = blobs.find(x => x.pathname === path); if (!blob) return json(res, 400, { error: 'Your picture did not upload. Try again' });
+      const t = a.t && typeof a.t === 'object' ? a.t : {}, n = (v, lo, hi, df) => Number.isFinite(+v) ? Math.max(lo, Math.min(hi, +v)) : df;
+      art.push({ surface: ['lid', 'kb', 'pad', 'bot'].includes(a.surface) ? a.surface : 'lid', url: blob.url, path, name: str(a.name, 60), w: Math.round(+a.w) || 0, h: Math.round(+a.h) || 0,
+        t: { z: n(t.z, .1, 8, 1), x: n(t.x, -3, 3, 0), y: n(t.y, -3, 3, 0), r: n(t.r, -360, 360, 0), fit: t.fit === 'contain' ? 'contain' : 'cover' } });
+    }
+    design.art = art;
+  }
   const pr = priceOrder({ packs, singles, design });
   if (pr.bad.length) return json(res, 400, { error: 'Something in your cart is no longer in the shop. Remove it and try again', bad: pr.bad });
   if (pr.short) return json(res, 400, { error: `Single stickers start from GH₵${pr.minSingles} per order. Add GH₵${pr.short} more (${Math.ceil(pr.short / PR.single)} more sticker${Math.ceil(pr.short / PR.single) > 1 ? 's' : ''}), or pick a full pack`, field: 'singles', short: pr.short });
   if (design) design.skinPrice = design.skinSize ? PR.skin[design.skinSize] : 0;
-  const id = newId(), dir = `orders/${id}-${secret()}`;
+  const id = newId(), dir = `checkouts/${id}-${secret()}`;
   if (design) {
     const sh = img(d.sheet, 3e6), mk = img(d.mock, 1e6);
     if (sh) design.sheet = (await put(`${dir}/sheet.jpg`, sh, { access: 'public', addRandomSuffix: false, contentType: 'image/jpeg' })).url;
@@ -36,10 +51,10 @@ export default async function handler(req, res) {
     picks = { size: str(b.picks.size, 4), n: +b.picks.n || 0, scaled: !!b.picks.scaled, layout: Array.isArray(b.picks.layout) ? b.picks.layout.slice(0, 300) : [] };
     if (sh) picks.sheet = (await put(`${dir}/picks.jpg`, sh, { access: 'public', addRandomSuffix: false, contentType: 'image/jpeg' })).url; }
   const clientTotal = Math.round((+b.total || 0) * 100) / 100, total = pr.total;
-  const order = { id, at: Date.now(), status: 'new', history: [{ s: 'new', at: Date.now(), by: 'Customer' }], name, phone, email, loc, note, packs, singles, picks, free: fr, design, total,
+  const ck = { id, at: Date.now(), status: 'pending', name, phone, email, loc, note, packs, singles, picks, free: fr, design, total,
     ...(clientTotal !== total ? { clientTotal } : {}), skinOnDM: false, attempts: [] };
-  await saveOrder(dir, order);
-  const what = [packs.length ? `${packs.reduce((a, p) => a + p.q, 0)} item(s)` : '', singles.length ? `${singles.reduce((a, s) => a + s.q, 0)} single sticker(s)` : '', design ? `custom ${design.size} pack (${design.n} stickers)` : '', fr ? `free ${fr.code}` : ''].filter(Boolean).join(' + ');
-  const ping = await pushAll({ title: `New order ${id} · GH₵${total}`, body: `${name}${loc ? ' · ' + loc : ''}\n${what}`, url: `/admin/#${id}`, tag: id, image: (design && (design.sheet || design.mock)) || (picks && picks.sheet) || undefined }).catch(() => 'failed');
-  return json(res, 200, { id, total, url: `${SITE}/o/${id}/`, push: ping });
+  if (!(total > 0)) return json(res, 400, { error: 'Nothing to pay in this cart' });
+  let pay; try { pay = await startPayment(ck, baseOf(req)); } catch (e) { return json(res, 502, { error: e.message || 'Paystack is not answering, try again' }); }
+  await saveCheckout(dir, ck);
+  return json(res, 200, { id, total, url: pay.url, track: `${SITE}/o/${id}/` });
 }

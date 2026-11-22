@@ -245,7 +245,7 @@ let L = null, col = '', surf = 'lid', sel = -1, lidA = 108, hist = [], skinSize 
 const PADP = 30;
 const PADPIC = new Set(['ph-gojo']);   // skins with their own trackpad artwork (skins/<id>-pad)
 const SKINP = { S: { name: 'Small', fit: 'up to 13.3″', price: 70 }, M: { name: 'Medium', fit: '14″ – 15.6″', price: 80 }, L: { name: 'Large', fit: '16″ – 17.3″', price: 90 }, C: { name: 'Custom', fit: 'full wrap or own picture', price: 120 } };
-const syncSize = () => { skinSize = ['lid', 'kb', 'bot'].some(k => String(skin[k]).startsWith('up:')) ? 'C' : skinFor(L.scr); };
+const syncSize = () => { skinSize = skinFor(L.scr); };   // every skin, own picture included, is priced by the laptop's size
 const skinFor = inch => !inch ? 'M' : inch <= 13.5 ? 'S' : inch <= 15.7 ? 'M' : 'L';
 const items = { lid: [], kb: [], bot: [] }, skin = { lid: '', kb: '', bot: '', pad: '' };
 let part = 'kb', PADR = null;   // part: on the keyboard surface, skin the keyboard area or just the trackpad

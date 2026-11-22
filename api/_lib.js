@@ -96,6 +96,32 @@ export async function allOrders(max = 400) {
   const orders = (await Promise.all(js.map(b => fetch(b.url, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).catch(() => null)))).filter(Boolean);
   return orders.sort((a, b) => b.at - a.at);
 }
+// ---------- checkouts: a cart the customer is paying for. Never shown to staff; it only becomes an order once Paystack confirms payment ----------
+// Lives at checkouts/<id>-<secret>/checkout-<time>.json. The paid order then gets the same id and secret under orders/.
+const latestCk = blobs => blobs.filter(b => /\/checkout-\d+\.json$/.test(b.pathname)).sort((a, b) => b.pathname.localeCompare(a.pathname, 'en', { numeric: true }))[0];
+export async function findCheckout(id) {
+  if (!/^SL-[2-9A-Z]{5}$/.test(id || '')) return null;
+  const { blobs } = await list({ prefix: `checkouts/${id}-` }), j = latestCk(blobs); if (!j) return null;
+  const r = await fetch(j.url, { cache: 'no-store' });
+  return r.ok ? { ck: await r.json(), dir: j.pathname.slice(0, j.pathname.lastIndexOf('/')) } : null;
+}
+export async function saveCheckout(dir, ck) {
+  const { blobs } = await list({ prefix: dir + '/' }), old = blobs.filter(b => /\/checkout-\d+\.json$/.test(b.pathname));
+  await put(`${dir}/checkout-${Date.now()}.json`, JSON.stringify(ck), { access: 'public', addRandomSuffix: false, contentType: 'application/json' });
+  if (old.length) await del(old.map(b => b.url)).catch(() => {});
+}
+// Start (or reuse) a Paystack payment for a checkout or a legacy unpaid order. A payment started in the last 10 minutes is reused.
+export async function startPayment(o, base) {
+  const recent = (o.attempts || []).filter(a => a.url && a.amount === o.total && Date.now() - a.at < 10 * 60e3 && !['failed', 'abandoned'].includes(a.status)).pop();
+  if (recent) return { url: recent.url, ref: recent.ref, reused: true };
+  const ref = `${o.id}-${Date.now().toString(36)}`;
+  const t = await paystack('/transaction/initialize', { email: o.email || `${o.phone}@customers.skinlab.shop`, amount: Math.round(o.total * 100), currency: 'GHS',
+    reference: ref, callback_url: `${base}/o/${o.id}/`, channels: ['mobile_money', 'card'],
+    metadata: { order: o.id, custom_fields: [{ display_name: 'Order', variable_name: 'order', value: o.id }, { display_name: 'Name', variable_name: 'name', value: o.name }] } });
+  (o.attempts ||= []).push({ ref, at: Date.now(), amount: o.total, status: 'initiated', url: t.authorization_url }); o.attempts = o.attempts.slice(-12);
+  return { url: t.authorization_url, ref };
+}
+export const baseOf = req => { const host = req.headers['x-forwarded-host'] || req.headers.host; return host && /^[a-z0-9.-]+(:\d+)?$/i.test(host) ? `${/^localhost|^127\./.test(host) ? 'http' : 'https'}://${host}` : SITE; };
 // Each save is a new file (order-<time>.json): a fresh URL is never served stale by the CDN. Older versions are removed.
 export const latest = blobs => blobs.filter(b => /\/order(-\d+)?\.json$/.test(b.pathname)).sort((a, b) => b.pathname.localeCompare(a.pathname, 'en', { numeric: true }))[0];
 export async function saveOrder(dir, order) {
@@ -139,10 +165,35 @@ export async function paystack(path, body) {
   const j = await r.json().catch(() => ({})); if (!r.ok || !j.status) throw new Error(j.message || 'Paystack error ' + r.status); return j.data;
 }
 // Ask Paystack (never the browser) whether a payment went through; if it did, mark the order paid once and tell the shop.
+async function paidCheckout(reference, tx) {
+  const id = reference.slice(0, 8), c = await findCheckout(id); if (!c) return null;
+  const ck = c.ck, rec = { ref: reference, status: tx && tx.status || 'unknown', amount: tx ? tx.amount / 100 : 0, currency: tx && tx.currency || '', channel: tx && tx.channel || '', psId: tx && tx.id || null,
+    fees: tx && tx.fees ? tx.fees / 100 : 0, checkedAt: Date.now(), msg: tx && tx.gateway_response || '' };
+  const att = (ck.attempts ||= []).find(x => x.ref === reference); if (att) Object.assign(att, { status: rec.status, checkedAt: rec.checkedAt, msg: rec.msg });
+  if (!tx || tx.status !== 'success') { ck.status = 'pending'; await saveCheckout(c.dir, ck); return null; }           // abandoned / failed / pending: no order
+  if (tx.currency !== 'GHS' || rec.amount + 0.001 < ck.total) {                                                        // wrong amount: recorded on the checkout, no order
+    ck.status = 'payment-mismatch'; ck.payIssue = { ...rec, expected: ck.total }; await saveCheckout(c.dir, ck);
+    await pushAll({ title: `⚠ Payment check ${id}`, body: `Paystack says ${rec.currency} ${rec.amount}, checkout is GH₵${ck.total}. No order was created.`, url: '/admin/', tag: id + '-pay' }).catch(() => {});
+    return null; }
+  // one order per checkout, however many times Paystack (or the customer's browser) reports the payment
+  try { await put(`locks/paid-${id}.json`, JSON.stringify({ ref: reference, at: Date.now() }), { access: 'public', addRandomSuffix: false, allowOverwrite: false, contentType: 'application/json' }); }
+  catch (e) { for (let i = 0; i < 6; i++) { const f = await findOrder(id); if (f) return f.order; await new Promise(r => setTimeout(r, 500)); } return null; }
+  const now = Date.now(), { attempts, status, payIssue, ...base } = ck;
+  const o = { ...base, status: 'confirmed', attempts, paid: { amount: rec.amount, ref: reference, at: now, verifiedAt: now, channel: rec.channel, currency: 'GHS', fees: rec.fees, psId: rec.psId, short: false },
+    history: [{ s: 'checkout', at: ck.at, by: 'Customer' }, { s: 'paid', at: now, by: 'Paystack' }, { s: 'confirmed', at: now, by: 'Paystack' }] };
+  await saveOrder(c.dir.replace(/^checkouts\//, 'orders/'), o);
+  ck.status = 'paid'; ck.orderAt = now; await saveCheckout(c.dir, ck);
+  const job = [...(o.packs || []).map(p => `${p.q}× ${p.label}`), (o.singles || []).length ? `${o.singles.reduce((a, x) => a + x.q, 0)} singles` : '', o.design ? `custom ${o.design.size || ''} pack` : '', (o.design && (o.design.art || []).length) ? 'own artwork' : ''].filter(Boolean).join(' · ');
+  await pushAll({ title: `💰 New paid order ${o.id} · GH₵${rec.amount}`, body: `${o.name}${o.loc ? ' · ' + o.loc : ''} · ${rec.channel === 'mobile_money' ? 'MoMo' : rec.channel || ''}\n${job.slice(0, 120)}`, url: `/admin/#${o.id}`, tag: o.id + '-paid',
+    image: (o.design && (o.design.sheet || o.design.mock)) || (o.picks && o.picks.sheet) || undefined,
+    printer: { title: `🖨 Ready to print · ${o.id}`, body: job.slice(0, 160), url: `/printer/#${o.id}`, tag: o.id + '-print' } }).catch(() => {});
+  return o;
+}
 export async function confirmPayment(reference) {
   if (!payOn() || !/^SL-[2-9A-Z]{5}-[a-z0-9]{4,12}$/.test(reference || '')) return null;
   const tx = await paystack('/transaction/verify/' + encodeURIComponent(reference));
-  const f = await findOrder(reference.slice(0, 8)); if (!f) return null;
+  const f = await findOrder(reference.slice(0, 8));
+  if (!f) return paidCheckout(reference, tx);
   const o = f.order, rec = { ref: reference, status: tx && tx.status || 'unknown', amount: tx ? tx.amount / 100 : 0, currency: tx && tx.currency || '', channel: tx && tx.channel || '', psId: tx && tx.id || null,
     fees: tx && tx.fees ? tx.fees / 100 : 0, checkedAt: Date.now(), msg: tx && tx.gateway_response || '' };
   if (o.paid && o.paid.ref === reference) return o;                                  // already processed: nothing changes

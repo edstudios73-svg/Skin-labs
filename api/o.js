@@ -1,6 +1,6 @@
 // GET /o/<id> : the customer's order page: payment state, progress with real timestamps, what was bought, help and reviews.
 // Coming back from Paystack (?reference=...) the payment is checked with Paystack first; success is only shown once verified.
-import { findOrder, esc, SITE, payOn, confirmPayment, FLOW } from './_lib.js';
+import { findOrder, findCheckout, esc, SITE, payOn, confirmPayment, FLOW } from './_lib.js';
 
 const LBL = { new: 'Order received', confirmed: 'Payment confirmed', artwork: 'Preparing artwork', printing: 'Printing', qc: 'Quality check', ready: 'Ready for pickup / dispatch', 'on-the-way': 'Out for delivery', delivered: 'Delivered',
   clarify: 'We need a quick word with you', hold: 'On hold', 'failed-delivery': 'Delivery unsuccessful', cancelled: 'Cancelled', 'refund-review': 'Refund in progress', refunded: 'Refunded' };
@@ -14,6 +14,7 @@ export default async function handler(req, res) {
   if (ref.startsWith(id + '-')) await confirmPayment(ref).catch(() => null);   // back from Paystack: ask Paystack, never trust the browser
   const f = await findOrder(id);
   res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.setHeader('Cache-Control', 'no-store'); res.setHeader('X-Robots-Tag', 'noindex');
+  if (!f) { const c = await findCheckout(id); if (c) return res.end(pendingPage(c.ck, ref, tries)); }
   if (!f) { res.statusCode = 404; return res.end(`<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Order not found · Skin Lab</title><body style="background:#000;color:#fff;font:16px system-ui;padding:40px 20px"><h1>Order not found</h1><p>Check the link, or <a style="color:#fff" href="https://wa.me/233558362423">chat with Skin Lab</a>.</p></body>`); }
   const o = f.order, d = o.design, pk = o.picks, first = esc(String(o.name || '').split(' ')[0]);
   const pic = (d && (d.sheet || d.mock)) || (pk && pk.sheet) || `${SITE}/og.jpg`, at = FLOW.indexOf(o.status), exc = at < 0;
@@ -41,7 +42,8 @@ export default async function handler(req, res) {
     <label class="ck"><input type="checkbox" id="rvk"> Skin Lab may show my photo on the shop</label>
     <details><summary>Quick questions (optional)</summary>${[['ease', 'How easy was ordering?'], ['pay', 'Was paying clear?'], ['product', 'Did the stickers meet your expectations?'], ['delivery', 'How was delivery?']].map(([k, t]) => `<label>${t}<select data-fb="${k}"><option value="0">–</option>${[5, 4, 3, 2, 1].map(n => `<option value="${n}">${'★'.repeat(n)}</option>`).join('')}</select></label>`).join('')}</details>
     <button class="btn y" type="submit" id="rvb">Send review</button><p class="lbl" id="rvm" role="status"></p></form></section>` : '';
-  res.end(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${refresh}
+  const clear = o.paid && ref ? `<script>try{const p=JSON.parse(localStorage.getItem('sl-pending')||'null');if(p&&p.id===${JSON.stringify(o.id)}){['sl-cart','sl-packs','sl-dsg','sl-pending'].forEach(k=>localStorage.removeItem(k));localStorage.setItem('sl-last',JSON.stringify(p.last||{}))}const os=JSON.parse(localStorage.getItem('sl-orders')||'[]');if(!os.some(x=>x.id===${JSON.stringify(o.id)}))localStorage.setItem('sl-orders',JSON.stringify([{id:${JSON.stringify(o.id)},at:${o.at},total:${o.total}},...os].slice(0,20)))}catch(e){}</script>` : '';
+  res.end(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${refresh}${clear}
 <title>Skin Lab order ${esc(o.id)}</title><meta name="robots" content="noindex">
 <meta property="og:title" content="Skin Lab order ${esc(o.id)}"><meta property="og:description" content="${esc(d ? `${d.packName || 'Custom pack'} · ${d.size} · ${d.n} stickers` : 'Sticker order')} · GH₵${o.total}"><meta property="og:image" content="${esc(pic)}">
 <link rel="icon" href="/favicon.png"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono&family=Instrument+Serif:ital@0;1&display=swap">
@@ -92,4 +94,32 @@ const fb={};document.querySelectorAll('[data-fb]').forEach(s=>fb[s.dataset.fb]=+
 try{const r=await fetch('/api/public/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({a:'review',id:${JSON.stringify(o.id)},rating:R,text:document.getElementById('rvt').value,permit:document.getElementById('rvk').checked,photo:await small(document.getElementById('rvp').files[0]),fb})}),j=await r.json();if(!r.ok)throw new Error(j.error);
 document.getElementById('rvf').innerHTML='<p style="margin-top:12px"><b>Thank you!</b> Your review shows on the shop once we\\'ve checked it.</p>'}catch(x){b.disabled=false;b.textContent='Send review';m.textContent=(x&&x.message)||'No connection'}}})();` : ''}
 </script></body></html>`);
+}
+
+// A checkout that is not paid (yet). No order exists for the shop until Paystack confirms the payment.
+function pendingPage(ck, ref, tries) {
+  const att = ref ? (ck.attempts || []).find(a => a.ref === ref) : null, st = att && att.status, failed = ['abandoned', 'failed', 'reversed'].includes(st);
+  const checking = ref && !failed && st !== 'success' && tries < 6 && ck.status !== 'payment-mismatch';
+  const box = ck.status === 'payment-mismatch' ? `<div class="warn"><b>We could not confirm this payment</b><span>The amount Paystack reported does not match your cart. No order was made. Please chat with us and quote ${esc(ck.id)}.</span></div>`
+    : failed ? `<div class="warn"><b>${st === 'failed' ? 'Payment failed' : 'Payment not completed'}</b><span>${st === 'failed' ? esc(att.msg || 'Paystack could not take the payment.') + ' ' : 'The Paystack page was closed before paying. '}Nothing was charged and no order was made. You can try again.</span></div>`
+    : checking ? `<div class="chk"><span class="spin"></span><div><b>Checking your payment…</b><span>We're confirming your transaction securely with Paystack.</span></div></div>`
+    : `<div class="chk"><div><b>Waiting for payment</b><span>Your order is made as soon as Paystack confirms your payment. MoMo can take a minute.</span></div></div>`;
+  const items = [...(ck.packs || []).map(p => `<li><span>${esc(p.label)}</span><b>×${p.q}</b></li>`), ...(ck.design ? [`<li><span>${esc(ck.design.packName || 'Your laptop design')}${(ck.design.art || []).length ? ' · your own artwork' : ''}</span><b>×1</b></li>`] : []),
+    ...((ck.singles || []).length ? [`<li><span>Single stickers</span><b>×${ck.singles.reduce((a, x) => a + x.q, 0)}</b></li>`] : [])].join('');
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${checking ? `<meta http-equiv="refresh" content="4;url=/o/${esc(ck.id)}/?reference=${encodeURIComponent(ref)}&n=${tries + 1}">` : ''}
+<title>Skin Lab · payment ${esc(ck.id)}</title><meta name="robots" content="noindex"><link rel="icon" href="/favicon.png"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono&family=Instrument+Serif:ital@0;1&display=swap">
+<style>*{box-sizing:border-box;margin:0}body{background:#000;color:#fff;font:15px/1.5 Geist,system-ui,sans-serif;padding:0 16px 60px}.w{max-width:620px;margin:0 auto}a{color:inherit}
+.top{display:flex;justify-content:space-between;align-items:center;height:60px;border-bottom:1px solid #222}.top b{font-size:20px;letter-spacing:-.04em}.lbl{font-family:'Geist Mono',monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#9a9a9a}
+h1{font-family:'Instrument Serif',serif;font-weight:400;font-size:clamp(40px,10vw,60px);line-height:1;margin:26px 0 6px}
+.warn,.chk{display:flex;gap:14px;align-items:flex-start;padding:16px;margin:18px 0;border:1px solid}.warn{background:#2e1310;border-color:#ff8a7a;display:block}.chk{background:#111;border-color:#333}.warn b,.chk b{display:block;font-size:17px}.warn span,.chk span{color:#cfcfcf}
+.spin{width:22px;height:22px;flex:0 0 22px;border:3px solid #333;border-top-color:#fff;border-radius:50%;animation:sp .9s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
+ul{list-style:none;padding:0;border-top:1px solid #222;margin:18px 0}li{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #222}.tot{display:flex;justify-content:space-between;font-size:18px;margin:6px 0 22px}
+.btn{display:flex;align-items:center;justify-content:center;min-height:52px;border:1px solid #fff;text-decoration:none;font-weight:500;margin-top:10px;background:none;color:#fff;width:100%;font:500 15px Geist,system-ui;cursor:pointer}.btn.y{background:#fff;color:#000}</style></head>
+<body><div class="w"><div class="top"><b>Skin Lab</b><a class="lbl" href="/">Shop</a></div>
+<span class="lbl" style="display:block;margin-top:22px">Checkout ${esc(ck.id)}</span><h1>${failed ? 'Not paid yet' : 'Almost there'}</h1>${box}
+<ul>${items}</ul><div class="tot"><span>Total</span><b>GH₵${ck.total}</b></div>
+${ck.status === 'payment-mismatch' ? '' : `<button class="btn y" id="pay">${failed ? 'Try paying again' : `Pay GH₵${ck.total}`}</button>`}
+<a class="btn" href="/#cart">Back to my cart</a><a class="btn" href="https://wa.me/233558362423?text=${encodeURIComponent(`Hello Skin Lab, I need help paying for ${ck.id}.`)}">Chat with Skin Lab</a>
+<p class="lbl" id="m" role="status" style="margin-top:12px"></p></div>
+<script>const b=document.getElementById('pay');if(b)b.onclick=async()=>{b.disabled=true;b.textContent='Opening Paystack…';try{const r=await fetch('/api/pay/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:${JSON.stringify(ck.id)}})}),j=await r.json();if(j.paid)return location.reload();if(j.url)return location.href=j.url;throw new Error(j.error||'Try again')}catch(e){b.disabled=false;b.textContent='Try again';document.getElementById('m').textContent=e.message}};</script></body></html>`;
 }

@@ -43,7 +43,7 @@ const old = store.get('sl-sel', null); if (Array.isArray(old)) old.forEach(c => 
 Object.assign(cart, store.get('sl-cart', {})); Object.assign(packs, store.get('sl-packs', {}));
 Object.keys(cart).forEach(c => { if (!CODE[c] || !(cart[c] > 0)) delete cart[c]; });
 // a pack in the cart: "<id>" is the big sheet (A4, or the A3 pick & mix), "<id>~5" the small A5 sheet
-const SZ = { A3: 'A3 pick & mix', A4: 'A4 big sheet', A5: 'A5 small sheet', XL: 'XL lid centrepiece', S: 'Small skin', M: 'Medium skin', L: 'Large skin', C: 'Custom skin', Keyboard: 'Keyboard skin', Trackpad: 'Trackpad skin', Decal: 'Laptop Art', Art: 'Laptop Art' };
+const SZ = { A3: 'A3 pick & mix', A4: 'A4 big sheet', A5: 'A5 small sheet', XL: 'XL lid centrepiece', S: 'Laptop skin', M: 'Laptop skin', L: 'Laptop skin', C: 'Laptop skin', Keyboard: 'Keyboard skin', Trackpad: 'Trackpad skin', Decal: 'Laptop Art', Art: 'Laptop Art' };
 // laptop skins: priced by size (change the numbers here)
 const SKINP = { S: { name: 'Small', fit: 'up to 13.3″', price: 70 }, M: { name: 'Medium', fit: '14″ – 15.6″', price: 80 }, L: { name: 'Large', fit: '16″ – 17.3″', price: 90 }, C: { name: 'Custom', fit: 'full wrap or your own picture', price: 120 } };
 const skinFor = inch => !inch ? 'M' : inch <= 13.5 ? 'S' : inch <= 15.7 ? 'M' : 'L';
@@ -53,7 +53,7 @@ function pkOf(k) { const ks = String(k);
   if (/^dc~/.test(ks)) { const [, id, c] = ks.split('~'), d = DEC[id]; if (!d) return null;
     return { k, id, decal: 1, p: { nice: d[1], bg: '#ececee' }, a5: false, size: 'Art', price: XP.decal, n: 0, img: 'decal:' + id, label: `${d[1]} · Laptop Art (${c === 'w' ? 'white' : 'black'})`, fit: DKIND[d[2]] }; }
   if (ks.startsWith('skin~')) { const [, id, z] = String(k).split('~'), sk = SKIN[id], t = SKINP[z]; if (!sk || !t) return null;
-    return { k, id, skin: 1, p: { nice: `${sk[1]} skin`, bg: '#111' }, a5: false, size: z, price: t.price, n: 0, img: 'skin:' + id, label: `${sk[1]} skin · ${t.name}`, fit: t.fit }; }
+    return { k, id, skin: 1, p: { nice: `${sk[1]} skin`, bg: '#111' }, a5: false, size: z, price: t.price, n: 0, img: 'skin:' + id, label: `${sk[1]} skin · for ${t.fit} laptops`, fit: t.fit }; }
   const [id, s5] = String(k).split('~'), p = PK[id]; if (!p) return null; const a5 = s5 === '5' && !!p.a5;
   const size = a5 ? 'A5' : p.size || 'A4';
   return { k, id, p, a5, size, price: a5 ? p.p5 : p.price, n: a5 ? p.a5.length : p.items.length, img: a5 ? id + '-a5' : id, label: `${p.nice} · ${SZ[size]}` }; }
@@ -212,7 +212,7 @@ function openCart(focus) {
   const dn = dg ? Object.values(dg.items || {}).flat().length : 0;
   b.innerHTML = `${dg ? `<div class="mypk">${dg.sheet ? `<button type="button" class="mys" id="c-sheet" aria-label="See your sheet bigger"><img src="${dg.sheet}" alt="Your sticker sheet"></button>` : ''}
       <div class="myt">${dg.thumb ? `<img src="${dg.thumb}" alt="Your laptop design">` : ''}<span class="lbl">Your own pack</span><b>${esc(dg.packName || 'Your laptop design')}</b>
-        <span>${dg.sheetSize ? `${dg.sheetSize} sheet · ` : ''}${dn} sticker${dn === 1 ? '' : 's'}${dsgSkins() ? ` · ${SKINP[dg.skinSize || 'M'].name} skin` : ''}${dsgPad(dg) ? ' · trackpad skin' : ''}</span><span class="pr">${CUR}${dsgPrice(dg)}</span>
+        <span>${dg.sheetSize ? `${dg.sheetSize} sheet · ` : ''}${dn} sticker${dn === 1 ? '' : 's'}${dsgSkins() ? ` · skin cut for your ${esc(dg.name || 'laptop')}` : ''}${dsgPad(dg) ? ' · trackpad skin' : ''}</span><span class="pr">${CUR}${dsgPrice(dg)}</span>
         <span class="dl"><a href="/design/" id="c-edit">Edit</a><button type="button" class="lnk" id="c-rmd">Remove</button></span></div></div>` : ''}
     ${pk.length ? `<div class="rows">${pk.map(([k, q]) => `<div class="row"><div class="th"><img src="${sh(pkOf(k).img, 'sheets-sm')}" alt="" loading="lazy" style="height:54px;width:auto;border-radius:3px"></div><div class="nm"><b style="font-family:var(--body)">${esc(pkOf(k).p.nice)}</b><span>${(pkOf(k).skin || pkOf(k).decal) ? `${SZ[pkOf(k).size]} · ${pkOf(k).fit}` : `${SZ[pkOf(k).size]} · ${pkOf(k).n} stickers`} · ${CUR}${pkOf(k).price}</span></div>
       <div class="qty"><button type="button" data-p="${k}" data-d="-1" aria-label="One less ${esc(pkOf(k).label)}">−</button><span>${q}</span><button type="button" data-p="${k}" data-d="1" aria-label="One more ${esc(pkOf(k).label)}">+</button></div></div>`).join('')}</div>` : ''}
@@ -229,13 +229,13 @@ function openCart(focus) {
       <div class="big" style="border:0;padding:0;margin:6px 0 0"><span>${PAY ? 'Pay now' : 'Total'}</span><span>${priceTxt(money(), dsgSkins())}</span></div><div class="small"><span>${PAY ? 'Secure payment with Mobile Money or card (Paystack). Delivery is not included and is agreed with you before we send.' : 'Pay with MoMo when we confirm · delivery agreed with you'}</span></div></div>
     <form class="ck" id="ck" novalidate>
       <div class="grp">Your details</div>
-      <ol class="steps3" aria-label="Checkout steps"><li class="on">Review</li><li class="on">Your details</li><li>${PAY ? 'Pay on Paystack' : 'Send order'}</li><li>Track it</li></ol>
+      <ol class="steps3" aria-label="Checkout steps"><li class="on">Review</li><li class="on">Your details</li><li>Pay on Paystack</li><li>Order confirmed</li></ol>
       <div class="fld" id="f-name"><label for="c-name">Name</label><input id="c-name" autocomplete="name" placeholder="e.g. Ama Mensah" value="${esc(who.name)}" required aria-describedby="e-name"><small class="fe" id="e-name"></small></div>
       <div class="fld" id="f-phone"><label for="c-phone">WhatsApp number</label><input id="c-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="e.g. 024 123 4567" value="${esc(who.phone || '')}" required aria-describedby="e-phone"><small class="fe" id="e-phone"></small></div>
       ${PAY ? `<div class="fld"><label for="c-email">Email <span style="opacity:.6">(optional, for your receipt)</span></label><input id="c-email" type="email" inputmode="email" autocomplete="email" placeholder="e.g. ama@gmail.com" value="${esc(who.email || '')}"></div>` : ''}
       <div class="fld"><label for="c-loc">Location</label><input id="c-loc" autocomplete="address-level2" placeholder="e.g. East Legon" value="${esc(who.loc)}"></div>
       <button class="btn y" type="submit" id="c-send"${singlesShort() ? ' disabled aria-disabled="true"' : ''}>${singlesShort() ? `Add ${CUR}${singlesShort()} more to check out` : PAY && money() ? `Pay ${CUR}${money()} securely` : `Place order${money() ? ` · ${CUR}${money()}` : ''}`}</button>
-      <p class="small ckn">${PAY ? 'Secure payment by Paystack. We print once you\'ve paid, then WhatsApp you about delivery.' : "We'll message you on WhatsApp to confirm, then you pay with MoMo."}</p>
+      <p class="small ckn">${PAY ? 'Secure payment by Paystack (Mobile Money or card). Your order is placed the moment your payment is confirmed.' : 'Online payment is switched off right now. Chat with us on WhatsApp and we will help you order.'}</p>
     </form>
     <button class="btn o" type="button" id="c-clear">Empty cart</button>`;
   const keep = () => { who = { ...who, name: $('#c-name').value.trim(), phone: $('#c-phone').value.trim(), loc: $('#c-loc').value.trim(), email: $('#c-email') ? $('#c-email').value.trim() : who.email || '' }; store.set('sl-who', who); };
@@ -254,6 +254,22 @@ function openCart(focus) {
 }
 const phoneOk = p => { let d = String(p || '').replace(/\D/g, ''); if (d.startsWith('00')) d = d.slice(2); if (d.startsWith('0')) d = '233' + d.slice(1); else if (d.length === 9) d = '233' + d; return /^233[235]\d{8}$/.test(d) || (!d.startsWith('233') && /^[1-9]\d{9,13}$/.test(d)); };
 const phoneIntl = p => { let d = p.replace(/\D/g, ''); if (d.startsWith('0')) d = '233' + d.slice(1); else if (d.length === 9) d = '233' + d; return d; };
+// the customer's own pictures (kept on this phone by the Design Studio) go up just before checkout, one per surface
+const artGet = id => new Promise(ok => { try { const r = indexedDB.open('sl-art', 1); r.onupgradeneeded = () => r.result.createObjectStore('art', { keyPath: 'id' });
+  r.onsuccess = () => { try { const q = r.result.transaction('art').objectStore('art').get(id); q.onsuccess = () => ok(q.result || null); q.onerror = () => ok(null); } catch (e) { ok(null); } }; r.onerror = () => ok(null); } catch (e) { ok(null); } });
+async function uploadArt(dg) {
+  const out = [], done = {};
+  for (const k of ['lid', 'kb', 'pad', 'bot']) { const v = String((dg.skin || {})[k] || ''); if (!v.startsWith('up:')) continue; const id = v.slice(3);
+    if (!done[id]) { const a = await artGet(id); if (!a) throw new Error('Your picture is not on this phone any more. Open the Design Studio and add it again');
+      const bm = await createImageBitmap(a.blob), c = document.createElement('canvas'); let q = .92, sc = 1, img;
+      for (let i = 0; i < 4; i++) { c.width = Math.round(bm.width * sc); c.height = Math.round(bm.height * sc); const g = c.getContext('2d'); g.clearRect(0, 0, c.width, c.height); g.drawImage(bm, 0, 0, c.width, c.height);
+        img = c.toDataURL(a.alpha ? 'image/png' : 'image/jpeg', q); if (img.length < 4.1e6) break; sc *= .8; q = .88; }
+      const r = await fetch('/api/art/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ img }) }), j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.path) throw new Error(j.error || 'Your picture did not upload. Try again'); done[id] = { path: j.path, w: c.width, h: c.height, name: a.name }; }
+    out.push({ surface: k, ...done[id], t: (dg.artT || {})[k] || null }); }
+  return out;
+}
+const skinName = id => String(id).startsWith('up:') ? 'Your own artwork' : (SKIN[id] || [])[1] || id;
 async function placeOrder() {
   const dg = curDsg(), pk = Object.entries(packs), items = Object.entries(cart);
   if (!pk.length && !items.length && !dg) return toast('Add a sheet, a sticker or a skin. The free sticker comes with it.');
@@ -262,21 +278,21 @@ async function placeOrder() {
   ferr('name'); ferr('phone');
   if (!who.name || who.name.length < 2) { ferr('name', 'Add your name so we know whose order it is'); $('#c-name').focus(); return; }
   if (!phoneOk(who.phone || '')) { ferr('phone', 'Use a WhatsApp number like 024 123 4567 or +233 24 123 4567'); $('#c-phone').focus(); return; }
-  const btn = $('#c-send'); btn.disabled = true; btn.textContent = 'Sending your order…';
+  const btn = $('#c-send'); btn.disabled = true; btn.textContent = 'Preparing your order…';
+  let art = []; if (dg) try { if (Object.values(dg.skin || {}).some(v => String(v).startsWith('up:'))) { btn.textContent = 'Uploading your picture…'; art = await uploadArt(dg); } } catch (e) { btn.disabled = false; btn.textContent = 'Try again'; return toast(e.message); }
   const body = { name: who.name, phone: phoneIntl(who.phone), email: who.email || '', loc: who.loc, total: money(),
     packs: pk.map(([k, q]) => { const o = pkOf(k); return { key: k, label: o.skin ? `${o.label} (${o.fit})` : `${o.p.nice} · ${SZ[o.size]}`, size: o.size, n: o.n, q, price: o.price }; }),
     singles: items.map(([c, q]) => ({ code: c, q, pack: CODE[c].p.nice, img: new URL(stickerSrc(c), location.href).href })),
     free: (() => { const c = dsgFree() || freeCode(), x = FREE.find(f => f.code === c); return x ? { code: c, name: x.name, img: new URL(`free/${c}.webp`, location.href).href, onDesign: !!dsgFree() } : null; })(),
     picks: items.length || freeCode() ? await singlesSheet(who.name).then(r => r && { sheet: r.img, size: r.size, n: r.n, scaled: r.scaled, layout: r.layout }).catch(() => null) : null,
-    design: dg ? { line: dsgLine(dg), laptop: dg.laptop || dg.name, packName: dg.packName, size: dg.sheetSize || '', n: Object.values(dg.items).flat().length, skins: Object.entries(dg.skin || {}).filter(([, v]) => v).map(([k, id]) => (k === 'pad' ? 'Trackpad: ' : '') + ((SKIN[id] || [])[1] || id)), skinSize: dsgSkins() ? (dg.skinSize || 'M') : '', skinPrice: dsgSkins() ? SKINP[dg.skinSize || 'M'].price : 0,
-      layout: dg.layout || [], scaled: !!dg.scaled, sheet: dg.sheet || null, mock: dg.thumb || null, raw: dsgPack(dg) } : null };
+    design: dg ? { line: dsgLine(dg), laptop: dg.laptop || dg.name, packName: dg.packName, size: dg.sheetSize || '', n: Object.values(dg.items).flat().length, skins: Object.entries(dg.skin || {}).filter(([, v]) => v).map(([k, id]) => (k === 'pad' ? 'Trackpad: ' : '') + skinName(id)), skinSize: dsgSkins() ? (dg.skinSize || 'M') : '', skinPrice: dsgSkins() ? SKINP[dg.skinSize || 'M'].price : 0,
+      layout: dg.layout || [], scaled: !!dg.scaled, sheet: dg.sheet || null, mock: dg.thumb || null, raw: dsgPack(dg), art } : null };
   try {
     const r = await fetch('/api/order/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }), j = await r.json().catch(() => ({}));
     if (!r.ok || !j.id) { if (j.field) ferr(j.field === 'phone' ? 'phone' : 'name', j.error); throw new Error(j.error || 'The order could not be sent'); }
-    store.set('sl-last', { packs: { ...packs }, cart: { ...cart }, at: Date.now() }); store.set('sl-orders', [{ id: j.id, at: Date.now(), total: body.total }, ...store.get('sl-orders', [])].slice(0, 20));
-    cart = {}; packs = {}; store.set('sl-dsg', null); saveCart(); updBar();
-    if (PAY && body.total > 0) { btn.textContent = 'Opening Paystack…'; const u = await payLink(j.id); if (u) return location.href = u; }
-    orderDone(j.id, body);
+    // nothing is ordered yet: the cart stays until Paystack confirms the payment (the order page then clears it)
+    store.set('sl-pending', { id: j.id, at: Date.now(), total: j.total, last: { packs: { ...packs }, cart: { ...cart }, at: Date.now() } });
+    btn.textContent = 'Opening Paystack…'; location.href = j.url;
   } catch (e) {
     btn.disabled = false; btn.textContent = 'Try again';
     const f = $('#ckfail') || Object.assign(document.createElement('div'), { id: 'ckfail', className: 'ckfail' }); btn.after(f);
@@ -331,8 +347,8 @@ function buyNow(k) {
     try {
       const r = await fetch('/api/order/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }), j = await r.json().catch(() => ({}));
       if (!r.ok || !j.id) throw new Error(j.error || 'The order could not be sent');
-      store.set('sl-orders', [{ id: j.id, at: Date.now(), total: o.price }, ...store.get('sl-orders', [])].slice(0, 20));
-      const u = await payLink(j.id); location.href = u || `/o/${j.id}/`;
+      store.set('sl-pending', { id: j.id, at: Date.now(), total: j.total, last: {} });
+      location.href = j.url || `/o/${j.id}/`;
     } catch (x) { btn.disabled = false; btn.textContent = 'Try again'; toast(x.message || 'No connection, try again'); }
   };
   box.hidden = false; buzz();
@@ -1067,7 +1083,7 @@ async function designToCart() {
   Object.entries(counts).forEach(([c, q]) => cart[c] = Math.max(cart[c] || 0, q));
   store.set('sl-dsg', designSnap()); saveCart(); updBar(); await saveMine(true); buzz(); openCart();
 }
-const dsgLine = d => !d ? '' : d.v === 3 ? `${d.name} (${d.col}): ` + Object.keys(d.items).filter(k => (d.items[k] || []).length || (d.skin || {})[k]).map(k => `${{ lid: 'lid', kb: 'keyboard', bot: 'bottom' }[k]}${d.skin[k] ? ' with ' + (SKIN[d.skin[k]] ? SKIN[d.skin[k]][1] : d.skin[k].replace('s-', '').replace('ph-', '')) + ' skin' : ''}${d.items[k].length ? `${d.skin[k] ? ' +' : ''} ${d.items[k].length} sticker${d.items[k].length > 1 ? 's' : ''}` : ''}`).join(', ') + (d.skin && d.skin.pad ? `, trackpad with ${SKIN[d.skin.pad] ? SKIN[d.skin.pad][1] : d.skin.pad.replace('s-', '').replace('ph-', '')} skin` : '') : `${lapName(d)} (${LCOLS[d.col][0]}): ` + Object.keys(SURFS).filter(k => (d.items[k] || []).length || (d.skin || {})[k]).map(k => `${k === 'pad' ? (PADS[d.pad || 'std'][2] + ' mousepad ' + PADS[d.pad || 'std'][0] + '×' + PADS[d.pad || 'std'][1] + ' cm').toLowerCase() : SURFS[k][0].toLowerCase()}${d.skin[k] ? ' with ' + SKIN[d.skin[k]][1] + ' skin' : ''}${d.items[k].length ? `${d.skin[k] ? ' +' : ''} ${d.items[k].length} sticker${d.items[k].length > 1 ? 's' : ''}` : ''}`).join(', ');
+const dsgLine = d => !d ? '' : d.v === 3 ? `${d.name} (${d.col}): ` + Object.keys(d.items).filter(k => (d.items[k] || []).length || (d.skin || {})[k]).map(k => `${{ lid: 'lid', kb: 'keyboard', bot: 'bottom' }[k]}${d.skin[k] ? ' with ' + (String(d.skin[k]).startsWith('up:') ? 'your own artwork' : SKIN[d.skin[k]] ? SKIN[d.skin[k]][1] : d.skin[k].replace('s-', '').replace('ph-', '')) + ' skin' : ''}${d.items[k].length ? `${d.skin[k] ? ' +' : ''} ${d.items[k].length} sticker${d.items[k].length > 1 ? 's' : ''}` : ''}`).join(', ') + (d.skin && d.skin.pad ? `, trackpad with ${SKIN[d.skin.pad] ? SKIN[d.skin.pad][1] : d.skin.pad.replace('s-', '').replace('ph-', '')} skin` : '') : `${lapName(d)} (${LCOLS[d.col][0]}): ` + Object.keys(SURFS).filter(k => (d.items[k] || []).length || (d.skin || {})[k]).map(k => `${k === 'pad' ? (PADS[d.pad || 'std'][2] + ' mousepad ' + PADS[d.pad || 'std'][0] + '×' + PADS[d.pad || 'std'][1] + ' cm').toLowerCase() : SURFS[k][0].toLowerCase()}${d.skin[k] ? ' with ' + SKIN[d.skin[k]][1] + ' skin' : ''}${d.items[k].length ? `${d.skin[k] ? ' +' : ''} ${d.items[k].length} sticker${d.items[k].length > 1 ? 's' : ''}` : ''}`).join(', ');
 const dsgPack = d => d && d.v === 3 ? { v: 3, n: d.name, c: d.col, k: d.skin, i: Object.fromEntries(Object.entries(d.items).map(([k, v]) => [k, v.map(o => [o.c, +o.x.toFixed(3), +o.y.toFixed(3), +o.s.toFixed(3), o.r])])) } : d && { l: [d.lap.b, d.lap.m], c: d.col, p: d.pad, k: d.skin, i: Object.fromEntries(Object.entries(d.items).map(([k, v]) => [k, v.map(o => [o.c, +o.x.toFixed(3), +o.y.toFixed(3), +o.s.toFixed(3), o.r])])) };
 const dsgUnpack = p => p && p.v === 3 ? { v: 3, name: p.n, col: p.c, skin: { lid: '', kb: '', bot: '', ...p.k }, items: Object.fromEntries(Object.entries({ lid: [], kb: [], bot: [], ...p.i }).map(([k, v]) => [k, v.filter(o => CODE[o[0]]).map(([c, x, y, s, r]) => ({ c, x, y, s, r }))])) } : p && { lap: { b: p.l[0], m: p.l[1] }, col: p.c, pad: p.p || 'std', skin: { lid: '', kb: '', bot: '', pad: '', ...p.k }, items: Object.fromEntries(Object.entries({ lid: [], kb: [], bot: [], pad: [], ...p.i }).map(([k, v]) => [k, v.filter(o => CODE[o[0]]).map(([c, x, y, s, r]) => ({ c, x, y, s, r }))])) };
 
