@@ -152,7 +152,8 @@ export async function produce({ order: o, job, plan, base, settings = {}, assets
   const add = (name, buf, type, extra = {}) => { files.push({ name, buf, type, bytes: buf.length, sha256: sha(buf), ...extra }); };
   const check = (name, ok, msg = '', warnOnly = false) => { checks.push({ check: name, ok: !!ok, msg, level: ok ? 'ok' : warnOnly ? 'warn' : 'error' }); if (!ok && warnOnly) warnings.push(msg || name); };
   check('Order id', job.id === o.id && /^SL-[2-9A-Z]{5}$/.test(o.id), `${o.id}`);
-  check('Payment verified', !!(o.paid && o.paid.verifiedAt), o.paid ? `Paystack ${o.paid.ref}` : 'not paid');
+  if (o.paid && o.paid.restored && !o.paid.verifiedAt) check('Payment verified', false, 'Restored order approved by the owner, not verified by Paystack. Collect any unpaid balance at pickup', true);   // only set by a direct owner restore, never by any API
+  else check('Payment verified', !!(o.paid && o.paid.verifiedAt), o.paid ? `Paystack ${o.paid.ref}` : 'not paid');
 
   // ---- stickers (packs, singles, free sticker, custom designer stickers) ----
   const stk = []; const want = (code, longMm, q, src, from) => { for (let i = 0; i < q; i++) stk.push({ code, longMm, src, from }); };
