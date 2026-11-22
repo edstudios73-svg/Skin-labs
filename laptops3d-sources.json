@@ -1,0 +1,158 @@
+{
+ "about": "Laptop outer sizes checked against manufacturer spec pages. corrected = catalogue value fixed; confirmed = catalogue value matched within ~1 mm. Cutting always uses a verified production template measured from the real laptop.",
+ "models": {
+  "apple-macbook-air-13-m1-2020": {
+   "status": "corrected",
+   "w_cm": 30.41,
+   "d_cm": 21.24,
+   "t_mm": 16.1,
+   "source": "https://support.apple.com/en-us/111883",
+   "checked": "2026-11-22",
+   "note": "wedge 4.1-16.1 mm"
+  },
+  "apple-macbook-pro-13-m1-2020": {
+   "status": "confirmed",
+   "w_cm": 30.4,
+   "d_cm": 21.2,
+   "t_mm": 15.6,
+   "source": "https://support.apple.com/en-us/111893",
+   "checked": "2026-11-22"
+  },
+  "apple-macbook-pro-16-2019-intel": {
+   "status": "corrected",
+   "w_cm": 35.79,
+   "d_cm": 24.59,
+   "t_mm": 16.2,
+   "source": "https://support.apple.com/en-us/111932",
+   "checked": "2026-11-22",
+   "note": ""
+  },
+  "hp-elitebook-840-g8": {
+   "status": "confirmed",
+   "w_cm": 32.3,
+   "d_cm": 21.5,
+   "t_mm": 18,
+   "source": "https://nanoreview.net/en/laptop/hp-elitebook-840-g8",
+   "checked": "2026-11-22"
+  },
+  "hp-elitebook-840-g9": {
+   "status": "corrected",
+   "w_cm": 31.56,
+   "d_cm": 22.4,
+   "t_mm": 19.2,
+   "source": "https://hp.com/ng-en/products/laptops/product-details/product-specifications/2102148284",
+   "checked": "2026-11-22",
+   "note": ""
+  },
+  "hp-elitebook-840-g10": {
+   "status": "corrected",
+   "w_cm": 31.56,
+   "d_cm": 22.4,
+   "t_mm": 19.2,
+   "source": "https://hp.com/lk-en/products/laptops/product-details/product-specifications/2101768551",
+   "checked": "2026-11-22",
+   "note": ""
+  },
+  "hp-probook-440-g8": {
+   "status": "corrected",
+   "w_cm": 32.19,
+   "d_cm": 21.39,
+   "t_mm": 19.9,
+   "source": "https://support.hp.com/ph-en/document/c06955072",
+   "checked": "2026-11-22",
+   "note": ""
+  },
+  "hp-probook-450-g8": {
+   "status": "confirmed",
+   "w_cm": 35.9,
+   "d_cm": 23.4,
+   "t_mm": 19.9,
+   "source": "https://support.hp.com/ph-en/document/c06934848",
+   "checked": "2026-11-22"
+  },
+  "hp-pavilion-15-eg-2022": {
+   "status": "confirmed",
+   "w_cm": 36.0,
+   "d_cm": 23.4,
+   "t_mm": 17.9,
+   "source": "https://www.hp.com/sa-en/products/laptops/product-details/product-specifications/2101388255",
+   "checked": "2026-11-22"
+  },
+  "hp-victus-15-fb": {
+   "status": "corrected",
+   "w_cm": 35.79,
+   "d_cm": 25.5,
+   "t_mm": 23.5,
+   "source": "https://hp.com/bd-en/products/laptops/product-details/product-specifications/2102070006",
+   "checked": "2026-11-22",
+   "note": ""
+  },
+  "hp-victus-15-fb1": {
+   "status": "corrected",
+   "w_cm": 35.79,
+   "d_cm": 25.5,
+   "t_mm": 23.5,
+   "source": "https://hp.com/bd-en/products/laptops/product-details/product-specifications/2102070006",
+   "checked": "2026-11-22",
+   "note": ""
+  },
+  "dell-latitude-5420-5430": {
+   "status": "confirmed",
+   "w_cm": 32.1,
+   "d_cm": 21.2,
+   "t_mm": 19.3,
+   "source": "https://www.dell.com/en-ca/work/shop/cty/pdp/spd/latitude-5420-laptop",
+   "checked": "2026-11-22"
+  },
+  "dell-inspiron-15-3520": {
+   "status": "confirmed",
+   "w_cm": 35.8,
+   "d_cm": 23.6,
+   "t_mm": 18.9,
+   "source": "https://www.manualslib.com/manual/3303261/Dell-Not21870.html?page=12",
+   "checked": "2026-11-22"
+  },
+  "dell-xps-13-9310": {
+   "status": "confirmed",
+   "w_cm": 29.6,
+   "d_cm": 19.9,
+   "t_mm": 14.8,
+   "source": "https://www.dell.com/ng/p/xps-13-9310-laptop/pd",
+   "checked": "2026-11-22"
+  },
+  "lenovo-thinkpad-t14-gen-2": {
+   "status": "confirmed",
+   "w_cm": 32.9,
+   "d_cm": 22.7,
+   "t_mm": 17.9,
+   "source": "https://psrefstuff.lenovo.com/syspool/Sys/PDF/ThinkPad/ThinkPad_T14_Gen_2_Intel/ThinkPad_T14_Gen_2_Intel_Spec.pdf",
+   "checked": "2026-11-22"
+  },
+  "lenovo-thinkpad-e14-gen-5": {
+   "status": "corrected",
+   "w_cm": 31.3,
+   "d_cm": 21.93,
+   "t_mm": 18.0,
+   "source": "https://psref.lenovo.com/syspool/Sys/PDF/ThinkPad/ThinkPad_E14_Gen_5_AMD/ThinkPad_E14_Gen_5_AMD_Spec.PDF",
+   "checked": "2026-11-22",
+   "note": "figure from a copy of the Lenovo AMD spec sheet; confirm Intel version"
+  },
+  "lenovo-legion-5-15-15ach6": {
+   "status": "confirmed",
+   "w_cm": 36.3,
+   "d_cm": 26.0,
+   "t_mm": 26.9,
+   "source": "https://psrefstuff.lenovo.com/syspool/Sys/PDF/Legion/Legion_5_15ACH6/Legion_5_15ACH6_Spec.html",
+   "checked": "2026-11-22"
+  },
+  "acer-nitro-5-an515-58": {
+   "status": "corrected",
+   "w_cm": 36.04,
+   "d_cm": 27.11,
+   "t_mm": 26.9,
+   "source": "https://www.acer.com/ca-en/laptops/nitro/nitro-5/pdp/NH.QFJAA.003",
+   "checked": "2026-11-22",
+   "note": ""
+  }
+ }
+}

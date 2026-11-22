@@ -426,12 +426,14 @@ function newDrops() {
 }
 // ---------- shop: product-first home. Every pack, skin and single sticker shares one card ----------
 // A product: { key, kind: pack|skin|single, id, name, cat, img, price, note, href, design }
-const SKCATN = { anime: 'Anime', heroes: 'Heroes', art: 'Art', cars: 'Cars', football: 'Football', gaming: 'Gaming', music: 'Music', nature: 'Nature', girly: 'Girly', street: 'Street art', space: 'Space' };
+const SKCATN = { code: 'Code & Tech', anime: 'Anime', heroes: 'Heroes & Villains', art: 'Art & Abstract', girly: 'Girly & Cute', street: 'Street & Graffiti', cars: 'Cars', football: 'Football', gaming: 'Gaming', music: 'Music', nature: 'Nature', space: 'Space' };
 const prodPack = p => ({ key: p.id, kind: 'pack', id: p.id, name: p.nice, cat: (CAT[p.cat] || {}).name || 'Stickers', catId: p.cat, img: sh(p.id, 'sheets-sm'), price: p.price, isNew: !!(p.new || p.drop),
   note: p.size === 'XL' ? 'XL lid sticker · about 18 cm' : p.size === 'A3' ? `A3 sheet · ${p.items.length} stickers` : `A4 sheet · ${p.items.length} stickers${p.a5 ? ` · A5 ${CUR}${p.p5}` : ''}`,
   href: '#' + p.id, design: `/design/?pack=${encodeURIComponent(p.id)}` });
 const prodSkin = s => ({ key: 'skin~' + s[0], kind: 'skin', id: s[0], name: s[1], cat: SKCATN[SKTAG[s[0]]] || 'Laptop skin', catId: 'skins', img: `skins/${s[0]}-s.${IX}`, price: SKINP.S.price, from: 1, isNew: NEWSKIN.has(s[0]),
   note: 'Sized to your laptop', href: '#skin-' + s[0], design: `/design/?skin=${encodeURIComponent(s[0])}` });
+const prodDecal = d => ({ key: 'dc~' + d[0], kind: 'decal', id: d[0], name: d[1], cat: ART, catId: 'art', img: `decals/${d[0]}-r.${IX}`, price: XP.decal, isNew: true,
+  note: `${DKIND[d[2]]} · black or white`, href: '#decal-' + d[0], design: '#decal-' + d[0] });
 const prodSingle = c => { const { p, it } = CODE[c]; return { key: 'one~' + c, kind: 'single', id: c, name: `${p.nice} · ${c}`, cat: (CAT[p.cat] || {}).name || 'Sticker', catId: 'singles', spr: [p, it], price: PRICE,
   note: 'Single sticker', href: '#' + p.id, design: `/design/?sticker=${encodeURIComponent(c)}` }; };
 const shopPacks = () => D.packs.filter(p => !p.free && CAT[p.cat]);
@@ -440,13 +442,13 @@ const shopSingles = () => shopPacks().flatMap(p => p.items.slice(0, 2).map(it =>
 function prodCard(x, i = 9) {
   const pic = x.spr ? `<span class="pc-spr">${spr(x.spr[0], x.spr[1], 150)}</span>`
     : `<img src="${x.img}" alt="${esc(x.name)}" loading="${i < 8 ? 'eager' : 'lazy'}" decoding="async">`;
-  const q = x.kind === 'single' ? cart[x.id] : packs[x.kind === 'skin' ? skinKey(x.id) : x.id];
-  const sv = x.kind === 'pack' ? x.id : x.kind === 'skin' ? 'sk:' + x.id : '';
-  return `<article class="pc ${x.kind === 'skin' ? 'is-skin' : ''}" data-key="${esc(x.key)}">
+  const q = x.kind === 'single' ? cart[x.id] : packs[x.kind === 'skin' ? skinKey(x.id) : x.kind === 'decal' ? `dc~${x.id}~b` : x.id];
+  const sv = x.kind === 'pack' ? x.id : x.kind === 'skin' ? 'sk:' + x.id : x.kind === 'decal' ? 'dc:' + x.id : '';
+  return `<article class="pc ${x.kind === 'skin' ? 'is-skin' : x.kind === 'decal' ? 'is-art' : ''}" data-key="${esc(x.key)}">
     <div class="pc-im"><a class="pc-img" href="${x.href}" aria-label="${esc(x.name)}">${x.isNew ? '<span class="pc-tag">New</span>' : ''}${pic}</a>${sv ? heart(sv, x.name) : ''}</div>
     <div class="pc-meta"><span class="pc-cat">${esc(x.cat)}</span><a class="pc-name" href="${x.href}">${esc(x.name)}</a>
       <div class="pc-row"><span class="pc-price">${x.from ? 'from ' : ''}${CUR}${x.price}</span><span class="pc-note">${esc(x.note)}</span></div></div>
-    <div class="pc-act"><a class="pc-btn pc-design" href="${x.design}">Design on my laptop</a>
+    <div class="pc-act"><a class="pc-btn pc-design" href="${x.design}">${x.kind === 'decal' ? 'See it on a laptop' : 'Design on my laptop'}</a>
       <button type="button" class="pc-btn pc-add" data-add="${esc(x.key)}">${q ? `In cart (${q}) · add` : 'Add to cart'}</button></div></article>`;
 }
 const hasLap = () => { const d = store.get('sl-design3', null); return !!(d && d.scr); };
@@ -454,18 +456,20 @@ const myLap = () => { const d = store.get('sl-design3', null); return d && d.scr
 const mySkinZ = () => { const d = store.get('sl-design3', null); return d && d.scr ? skinFor(d.scr) : 'M'; };
 const skinKey = id => `skin~${id}~${mySkinZ()}`;
 function addProduct(key) {
-  const [t, id] = key.startsWith('skin~') ? ['skin', key.slice(5)] : key.startsWith('one~') ? ['single', key.slice(4)] : ['pack', key];
+  const [t, id] = key.startsWith('skin~') ? ['skin', key.slice(5)] : key.startsWith('one~') ? ['single', key.slice(4)] : key.startsWith('dc~') ? ['decal', key.slice(3)] : ['pack', key];
   let name;
   if (t === 'single') { if (!CODE[id]) return; cart[id] = Math.min((cart[id] || 0) + 1, 99); saveCart(); name = `Sticker ${id}`; }
   else if (t === 'skin') { if (!SKIN[id]) return; if (!hasLap()) { toast('Pick your laptop so the skin is cut to its size'); setTimeout(() => location.href = `/design/?skin=${encodeURIComponent(id)}`, 600); return; } const k = skinKey(id); setPack(k, (packs[k] || 0) + 1); name = `${SKIN[id][1]} skin`; }
+  else if (t === 'decal') { if (!DEC[id]) return; const k = `dc~${id}~b`; setPack(k, (packs[k] || 0) + 1); name = `${DEC[id][1]} (black vinyl, change it in the cart)`; }
   else { if (!PK[id]) return; setPack(id, (packs[id] || 0) + 1); name = PK[id].nice; }
   buzz(); updBar();
-  document.querySelectorAll(`.pc[data-key="${CSS.escape(key)}"] .pc-add`).forEach(b => { const q = t === 'single' ? cart[id] : packs[t === 'skin' ? skinKey(id) : id]; b.textContent = `In cart (${q}) · add`; b.classList.add('done'); setTimeout(() => b.classList.remove('done'), 900); });
+  document.querySelectorAll(`.pc[data-key="${CSS.escape(key)}"] .pc-add`).forEach(b => { const q = t === 'single' ? cart[id] : packs[t === 'skin' ? skinKey(id) : t === 'decal' ? `dc~${id}~b` : id]; b.textContent = `In cart (${q}) · add`; b.classList.add('done'); setTimeout(() => b.classList.remove('done'), 900); });
   for (const s of ['#nv-cart', '#t-cart']) { const e = $(s); if (e) { e.classList.remove('bump'); void e.offsetWidth; e.classList.add('bump'); } }
   toast(`Added to cart: ${name}`);
 }
 let SHOPF = store.get('sl-shopf', 'all'), SHOPN = 24;
-const prodOfItem = x => !x ? null : x.type === 'pack' && PK[x.k] ? prodPack(PK[x.k]) : x.type === 'skin' && SKIN[x.k.slice(3)] ? prodSkin(SKIN[x.k.slice(3)]) : null;
+const skinThemes = () => Object.entries(SKCATN).filter(([k]) => shopSkins().some(x => SKTAG[x[0]] === k));
+const prodOfItem = x => !x ? null : x.type === 'pack' && PK[x.k] ? prodPack(PK[x.k]) : x.type === 'skin' && SKIN[x.k.slice(3)] ? prodSkin(SKIN[x.k.slice(3)]) : x.type === 'decal' && DEC[x.k.slice(3)] ? prodDecal(DEC[x.k.slice(3)]) : null;
 // recently viewed: packs and skins this phone opened, newest first
 const seen = k => store.set('sl-viewed', [k, ...(store.get('sl-viewed', []) || []).filter(x => x !== k)].slice(0, 12));
 const viewed = (n = 4, skip) => (store.get('sl-viewed', []) || []).filter(k => k !== skip).map(k => prodOfItem(itemOf(k))).filter(Boolean).slice(0, n);
@@ -473,6 +477,8 @@ const viewed = (n = 4, skip) => (store.get('sl-viewed', []) || []).filter(k => k
 document.addEventListener('click', e => { const a = e.target.closest('[data-add]'); if (a) { e.preventDefault(); addProduct(a.dataset.add); return; } if (e.target.closest('[data-idea]')) { e.preventDefault(); openInspo(); } });
 function shopList(f) {
   if (f === 'skins') return shopSkins().map(prodSkin);
+  if (f === 'art') return DECALS.map(prodDecal);
+  if (f.startsWith('skin:')) return shopSkins().filter(x => SKTAG[x[0]] === f.slice(5)).map(prodSkin);
   if (f === 'packs') return shopPacks().map(prodPack);
   if (f === 'singles') return shopSingles().map(prodSingle);
   if (CAT[f]) return CAT[f].packs.map(id => PK[id]).filter(Boolean).map(prodPack);
@@ -480,50 +486,50 @@ function shopList(f) {
   const ps = shopPacks().map(prodPack), ss = shopSkins().map(prodSkin), out = [];
   ps.sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
   for (let i = 0, j = 0; i < ps.length || j < ss.length;) { if (i < ps.length) out.push(ps[i++]); if (i < ps.length) out.push(ps[i++]); if (j < ss.length) out.push(ss[j++]); }
-  return out;
+  return [...out, ...DECALS.map(prodDecal)];
+}
+// the home gallery: everything at once (rendered in chunks as you scroll), filtered by the category chips and the search box
+let SHOPQ = '', SHOPIO = null;
+function shopMatches(list, q) {
+  const words = q.toLowerCase().split(/\s+/).filter(Boolean); if (!words.length) return list;
+  const hit = new Set(searchItems(q).map(x => x.type === 'skin' ? 'skin~' + x.k.slice(3) : x.type === 'decal' ? 'dc~' + x.k.slice(3) : x.k));
+  return list.filter(x => hit.has(x.key) || words.every(w => `${x.name} ${x.cat} ${x.note} ${x.id}`.toLowerCase().includes(w)));
 }
 function shopGrid() {
-  const all = shopList(SHOPF), list = all.slice(0, SHOPN);
-  $('#g-grid').innerHTML = list.length ? list.map(prodCard).join('') : `<div class="pc-empty"><b>Nothing here yet</b><span>Try another category.</span></div>`;
-  $('#g-count').textContent = `${all.length} design${all.length === 1 ? '' : 's'}`;
-  $('#g-more').hidden = all.length <= SHOPN; $('#g-more').textContent = `Show more · ${all.length - SHOPN} left`;
+  const base = shopList(SHOPF), all = shopMatches(base, SHOPQ), g = $('#g-grid'); let n = 0;
+  if (SHOPIO) SHOPIO.disconnect();
+  $('#g-count').textContent = `${all.length} ${all.length === 1 ? 'design' : 'designs'}${SHOPQ ? ` for “${SHOPQ}”` : ''}`;
+  if (!all.length) { g.innerHTML = `<div class="pc-empty"><b>Nothing found${SHOPQ ? ` for “${esc(SHOPQ)}”` : ''}</b><span>Try another word or category, or <a href="#" data-idea="1">send us your idea</a> and we'll make it.</span></div>`; return; }
+  g.innerHTML = ''; const more = () => { g.insertAdjacentHTML('beforeend', all.slice(n, n + 24).map((x, i) => prodCard(x, n + i)).join('')); n += 24; if (n >= all.length && SHOPIO) SHOPIO.disconnect(); };
+  more(); const end = $('#g-end');
+  if (n < all.length && end && 'IntersectionObserver' in window) { SHOPIO = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { more(); if (n < all.length) { SHOPIO.unobserve(end); SHOPIO.observe(end); } } }, { rootMargin: '1500px 0px' }); SHOPIO.observe(end); }   // re-observing re-checks, so loading never stalls
+  else while (n < all.length) more();
 }
 function shopRow(id, title, sub, items, f) {
   if (!items.length) return '';
   return `<section class="srow" id="${id}"><div class="srow-h"><div><h2>${title}</h2>${sub ? `<p>${sub}</p>` : ''}</div>${f ? `<button type="button" class="srow-all" data-f="${f}">View all</button>` : ''}</div>
     <div class="pgrid">${items.map(prodCard).join('')}</div></section>`;
 }
+function catRow(id, title, sub, items, f) {
+  if (!items.length) return '';
+  return `<section class="srow crow" id="${id}"><div class="srow-h"><div><h3>${esc(title)}</h3><p>${esc(sub)}</p></div>${items.length > 4 ? `<button type="button" class="srow-all" data-f="${esc(f)}">View all ${items.length}</button>` : ''}</div>
+    <div class="pgrid">${items.slice(0, 4).map(prodCard).join('')}</div></section>`;
+}
 function vHome() {
-  const seen = new Set(), take = (list, n) => { const out = []; for (const x of list) { if (out.length >= n) break; if (seen.has(x.key)) continue; seen.add(x.key); out.push(x); } return out; };
-  const allP = shopPacks().map(prodPack), allS = shopSkins().map(prodSkin);
-  const fresh = take([...allP.filter(x => x.isNew), ...allS.filter(x => x.isNew)], 4);
-  const trend = take(POPL.length ? POPL.map(id => PK[id]).filter(Boolean).map(prodPack) : [], 4);
-  const skins4 = take(allS, 4), packs4 = take(allP, 4), singles4 = take(shopSingles().map(prodSingle), 4);
+  SHOPF = 'all'; SHOPQ = '';   // the shop always opens on everything
   const cats = D.cats.filter(c => c.packs.some(id => PK[id]));
-  const hs = shopSkins(), hero = [hs.find(s => s[0] === 'ph-galaxy') || hs[0], hs.find(s => s[0] === 'ph-gojo') || hs[1]].filter(Boolean);
-  app.innerHTML = `<section class="hero3">
-      <div class="h3-copy"><span class="lbl">Skin Lab · by Baiden Creatives</span>
-        <h1>Your Laptop. <em>Your Story.</em></h1>
-        <p>Discover unique laptop skins and stickers. Shop your favourites or create something completely your own.</p>
-        <div class="h3-btns"><a class="b3 b3-w" href="#explore">Explore Designs</a><a class="b3 b3-o" href="/design/?upload=1">Create Your Own</a></div>
-        <ul class="h3-facts"><li>Skins from ${CUR}${SKINP.S.price}</li><li>Stickers from ${CUR}${PRICE}</li><li>Printed in Accra</li></ul></div>
-      <a class="h3-art" href="#explore" aria-label="Explore designs">${hero.map((s, i) => `<span class="lid lid${i}"><img src="skins/${s[0]}-s.${IX}" alt="${esc(s[1])} laptop skin" fetchpriority="high"><i class="cam"></i></span>`).join('')}
-        <span class="h3-cap"><b>${esc(hero[0] ? hero[0][1] : '')}</b> laptop skin</span></a>
-    </section>
+  const chips = [['all', 'All'], ['packs', 'Sticker packs'], ['skins', 'Laptop skins'], ['art', ART], ['singles', 'Single stickers'], ...cats.map(c => [c.id, c.name]), ...skinThemes().map(([k, n]) => ['skin:' + k, `${n} skins`])];
+  const rv = viewed(4);
+  app.innerHTML = `<section class="intro"><div><h1>Your Laptop. <em>Your Story.</em></h1><p>Laptop skins, sticker packs and Laptop Art. Shop below, or <a href="/design/?upload=1">create your own</a>.</p></div></section>
     ${myOrders()}${lastOrder()}
-    <section class="gal" id="explore">
-      <div class="gal-h"><div><h2>Explore Our Designs</h2><p id="g-count"></p></div>
-        <div class="gal-f"><div class="segs" role="tablist" aria-label="Product type">${[['all', 'All'], ['skins', 'Laptop skins'], ['packs', 'Sticker packs'], ['singles', 'Single stickers']].map(([k, n]) => `<button type="button" role="tab" data-f="${k}">${n}</button>`).join('')}</div>
-          <label class="csel"><span class="sr">Category</span><select id="g-cat"><option value="">All categories</option>${cats.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></label></div></div>
-      <div class="pgrid" id="g-grid"></div>
-      <button type="button" class="b3 b3-o g-more" id="g-more" hidden>Show more</button>
+    <section class="gal" id="explore" aria-label="All products">
+      <div id="fbar-s" aria-hidden="true"></div><div class="fbar" id="fbar"><label class="fsearch"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><span class="sr">Search the shop</span>
+        <input id="g-q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Search stickers, skins, Laptop Art… e.g. anime, Messi, code"><button type="button" class="fx" id="g-x" hidden aria-label="Clear search">×</button></label>
+        <div class="chips" id="g-chips" role="tablist" aria-label="Categories">${chips.map(([k, n]) => `<button type="button" role="tab" data-f="${esc(k)}" class="${k === 'all' ? 'on' : ''}" aria-selected="${k === 'all'}">${esc(n)}</button>`).join('')}</div></div>
+      <div class="gal-c"><span class="lbl" id="g-count"></span></div>
+      <div class="pgrid" id="g-grid"></div><div id="g-end" aria-hidden="true"></div>
     </section>
-    ${shopRow('s-seen', 'Recently Viewed', 'Pick up where you left off.', viewed(4), '')}
-    ${shopRow('s-new', 'New Arrivals', 'Fresh from the print table.', fresh, 'all')}
-    ${shopRow('s-trend', 'Trending Designs', 'What people in Accra are ordering right now.', trend, '')}
-    ${shopRow('s-skins', 'Laptop Skins', `Full-lid vinyl skins, cut to your laptop. From ${CUR}${SKINP.S.price}.`, skins4, 'skins')}
-    ${shopRow('s-packs', 'Sticker Packs', 'Whole sheets of die-cut stickers.', packs4, 'packs')}
-    ${shopRow('s-singles', 'Single Stickers', `Only want a few? ${CUR}${PRICE} each.`, singles4, 'singles')}
+    ${shopRow('s-seen', 'Recently Viewed', 'Pick up where you left off.', rv, '')}
     ${INS.length ? `<section class="srow" id="s-custom"><div class="srow-h"><div><h2>Custom Creations</h2><p>Real laptops we dressed. Tap one to get the look.</p></div><a class="srow-all" href="#inspo">View all</a></div>
       <div class="pgrid">${INS.slice(0, 4).map(x => `<article class="pc"><a class="pc-img ph" href="#inspo"><img src="inspo/sm/${x.id}.${IX}" alt="Custom laptop by Skin Lab" loading="lazy"></a>
         <div class="pc-meta"><span class="pc-cat">Custom</span><span class="pc-name">${esc(x.alt || 'Custom laptop')}</span><div class="pc-row"><span class="pc-price">from ${CUR}15</span><span class="pc-note">Made to order</span></div></div>
@@ -531,34 +537,18 @@ function vHome() {
     <section class="own"><div class="own-c"><span class="lbl">Custom skins</span><h2>Have Your Own Design?</h2>
       <p>Upload your artwork, picture, logo or idea and turn it into your own laptop skin.</p>
       <a class="b3 b3-k" href="/design/?upload=1">Create Your Own Skin</a></div>
-      <div class="own-art" aria-hidden="true"><span class="lid lid0"><img src="skins/${(hero[1] || hero[0] || [''])[0]}-s.${IX}" alt="" loading="lazy"><i class="cam"></i></span></div></section>
+      <div class="own-art" aria-hidden="true"><span class="lid lid0"><img src="skins/ph-gojo-s.${IX}" alt="" loading="lazy"><i class="cam"></i></span></div></section>
     ${reviewsBlock()}${footer}`;
-  const setF = f => { SHOPF = f; SHOPN = 24; store.set('sl-shopf', f);
-    app.querySelectorAll('.segs [data-f]').forEach(b => { const on = b.dataset.f === f || (CAT[f] && b.dataset.f === 'packs'); b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
-    $('#g-cat').value = CAT[f] ? f : ''; shopGrid(); };
-  app.querySelector('.segs').onclick = e => { const b = e.target.closest('[data-f]'); if (b) setF(b.dataset.f); };
-  $('#g-cat').onchange = e => setF(e.target.value || 'all');
-  $('#g-more').onclick = () => { SHOPN += 24; shopGrid(); };
+  const setF = f => { SHOPF = f; app.querySelectorAll('#g-chips [data-f]').forEach(b => { const on = b.dataset.f === f; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); if (on) b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }); shopGrid(); };
+  $('#g-chips').onclick = e => { const b = e.target.closest('[data-f]'); if (!b) return; setF(b.dataset.f); const t = $('#explore').getBoundingClientRect().top; if (t < 0) $('#explore').scrollIntoView(); };
+  let qt = 0; $('#g-q').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { SHOPQ = e.target.value.trim(); $('#g-x').hidden = !SHOPQ; shopGrid(); }, 120); };
+  $('#g-q').onkeydown = e => { if (e.key === 'Enter') e.target.blur(); };
+  $('#g-x').onclick = () => { $('#g-q').value = ''; SHOPQ = ''; $('#g-x').hidden = true; shopGrid(); $('#g-q').focus(); };
   app.querySelectorAll('.srow-all[data-f]').forEach(b => b.onclick = () => { setF(b.dataset.f); $('#explore').scrollIntoView({ behavior: 'smooth' }); });
-  app.onclick = e => { if (!$('#explore')) return;
-    const ex = e.target.closest('a[href="#explore"]'); if (ex) { e.preventDefault(); $('#explore').scrollIntoView({ behavior: 'smooth' }); } };
-  setF(SHOPF === 'all' || SHOPF === 'skins' || SHOPF === 'packs' || SHOPF === 'singles' || CAT[SHOPF] ? SHOPF : 'all');
+  app.onclick = null;
+  if ('IntersectionObserver' in window) { const io = new IntersectionObserver(([e]) => $('#fbar') && $('#fbar').classList.toggle('stuck', !e.isIntersecting && e.boundingClientRect.top < 0)); io.observe($('#fbar-s')); }   // pinned: categories slide in one row
+  shopGrid();
   if ($('#again')) $('#again').onclick = reorder;
-}
-// ---------- account: orders, tracking, saved designs and wishlist in one place (kept on this phone) ----------
-function vAccount() {
-  const os = (store.get('sl-orders', []) || []).filter(o => o && o.id), mine = store.get('sl-mine', []) || [];
-  app.innerHTML = `<section class="acc"><span class="lbl">Your account</span><h1>Hello${who.name ? ', ' + esc(who.name.split(' ')[0]) : ''}.</h1>
-    <p class="acc-sub">Your orders, saved designs and wishlist live on this device. No password needed.</p>
-    <div class="acc-g">
-      <div class="acc-b"><h2>Orders</h2>${os.length ? `<div class="acc-o">${os.slice(0, 12).map(o => `<a href="/o/${esc(o.id)}/"><b>${esc(o.id)}</b><span>${new Date(o.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} · ${CUR}${o.total}</span><i>Track →</i></a>`).join('')}</div>` : '<p class="acc-e">No orders on this device yet.</p>'}
-        <form class="acc-t" id="acc-t"><label class="lbl" for="acc-ti">Track an order</label><div><input id="acc-ti" placeholder="e.g. SL-ABC12" autocapitalize="characters"><button class="b3 b3-w" type="submit">Track</button></div></form></div>
-      <a class="acc-b acc-l" href="#mine"><h2>Saved designs</h2><p>${mine.length ? `${mine.length} design${mine.length > 1 ? 's' : ''} from the Design Studio` : 'Designs you save in the Design Studio show up here.'}</p><i>Open →</i></a>
-      <a class="acc-b acc-l" href="#saved"><h2>Wishlist</h2><p>${SAVED.length ? `${SAVED.length} saved item${SAVED.length > 1 ? 's' : ''}` : 'Tap the heart on any design to keep it here.'}</p><i>Open →</i></a>
-      ${viewed(4).length ? `<div class="acc-b acc-rv"><h2>Recently viewed</h2><div class="pgrid">${viewed(4).map(prodCard).join('')}</div></div>` : ''}
-      <a class="acc-b acc-l" href="#help"><h2>Help &amp; contact</h2><p>Delivery, care and custom sizes. A real person on WhatsApp.</p><i>Open →</i></a>
-    </div></section>${footer}`;
-  $('#acc-t').onsubmit = e => { e.preventDefault(); const v = $('#acc-ti').value.trim().toUpperCase(); if (v) location.href = `/o/${encodeURIComponent(v)}/`; };
 }
 function vCats() { vHome(); }
 function vCat(c) {
@@ -592,7 +582,6 @@ function vPack(p) {
         <button class="btn wa" type="button" id="orderpack"><span id="op-t">Order</span></button>
         <button class="btn o" type="button" data-packbtn="${p.id}" id="addpack"></button>
         <a class="btn o" href="/design/?pack=${encodeURIComponent(p.id)}">Design on my laptop</a>
-        ${FREE.length ? `<p class="frl"><i>FREE</i> + 1 free sticker with every order · pick it at checkout</p>` : ''}
       </div>
     </div>
     <div class="sech" style="margin-top:26px"><div><h2 style="font-size:clamp(32px,8vw,48px)">What's <em>inside</em></h2><p class="sub">Only want a few? Tap the ones you like (${CUR}${PRICE} each), then <b>Checkout</b>. Hold one to see it bigger.</p></div></div>

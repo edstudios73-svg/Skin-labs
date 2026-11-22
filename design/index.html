@@ -192,6 +192,8 @@ body.cmping #pane,body.cmping #surf{opacity:.45}
 .subf .fld{display:grid;gap:4px}.subf input:not([type]),.subf input[inputmode]{background:#000;border:1px solid var(--line2);color:#fff;padding:11px 12px;font:400 15px var(--body)}
 .chk{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:#ddd}.chk input{margin-top:3px;width:18px;height:18px;accent-color:#fff}.sfb{display:grid;grid-template-columns:1fr 1.4fr;gap:8px}
 .seg#tab button{font-size:13px}
+.row .ic.lp{width:88px;height:62px}.row .ic.lp img{background:transparent;object-fit:contain;filter:drop-shadow(0 6px 10px rgba(0,0,0,.45))}
+.res .row{grid-template-columns:88px 1fr auto!important;gap:16px!important;padding:10px 0!important}
 </style>
 <script type="importmap">{"imports":{"three":"/vendor/three/three.module.min.js"}}</script>
 <link rel="modulepreload" href="/vendor/three/three.module.min.js"><link rel="modulepreload" href="/vendor/three/OrbitControls.js">
@@ -229,14 +231,18 @@ try { addDrops(JSON.parse(localStorage.getItem('sl-drops') || 'null')); } catch 
 // free sticker (one per order): shown as the first tab in the tray
 function addFree(f) { if (!f || !Array.isArray(f.stickers) || PK['free-stickers']) return 0;
   const items = f.stickers.map(x => [x.code, 0, 0, x.w, x.h, `/free/${x.code}-s.webp`, `/free/${x.code}.webp`]), p = { id: 'free-stickers', cat: 'free', name: 'FREE · 1 PER ORDER', aw: 1, ah: 1, items, drop: 1, free: 1 };
-  PK[p.id] = p; items.forEach(it => CODE[it[0]] = { p, it }); CAT.free = { id: 'free', name: 'Free ★', packs: [p.id] }; D.cats.unshift(CAT.free); return 1; }
+  PK[p.id] = p; items.forEach(it => CODE[it[0]] = { p, it }); return 1   /* free stickers are picked in the cart / checkout only, never in the studio */; }
 try { addFree(JSON.parse(localStorage.getItem('sl-free-cat') || 'null')); } catch (e) {}
 const isFree = c => String(c).startsWith('XQV-');
 const hdSrc = c => (CODE[c] && CODE[c].it[6]) || `/hd/${c}.avif`;
 let IX = 'webp'; try { if (localStorage.getItem('sl-ix') === 'avif') IX = 'avif'; } catch (e) {}
 const spr = (p, it, box) => { const s = box / Math.max(it[3], it[4]); if (it[5]) return `<span class="s" style="width:${it[3] * s}px;height:${it[4] * s}px;background:url('${it[5]}') center/contain no-repeat"></span>`; return `<span class="s" style="width:${it[3] * s}px;height:${it[4] * s}px;background:url(/atlas/${p.id}.${IX}) ${-it[1] * s}px ${-it[2] * s}px/${p.aw * s}px ${p.ah * s}px no-repeat"></span>`; };
 const CAT_ = await (await fetch('/laptops3d.json')).json(), LCOL = CAT_.cols;
-const LAPS = CAT_.l.map((l, i) => ({ i, brand: l[0], name: l[1], scr: l[2], w: l[3], d: l[4], t: l[5], style: l[6], tags: l[7], cols: l[8].split(',') }));
+const lapKey = (b, n) => `${b} ${n}`.toLowerCase().normalize('NFKD').replace(/[″"]/g, 'in').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 90);
+const LAPS = CAT_.l.map((l, i) => ({ i, brand: l[0], name: l[1], scr: l[2], w: l[3], d: l[4], t: l[5], style: l[6], tags: l[7], cols: l[8].split(','), key: lapKey(l[0], l[1]) }));
+// laptop pictures: a licensed photo when the shop has one (laptops-photo/index.json), otherwise our render of the 3D model
+let PHOTOS = new Set(); fetch('/laptops-photo/index.json').then(r => r.ok ? r.json() : []).then(a => { PHOTOS = new Set(a); }).catch(() => {});
+const lapPic = l => PHOTOS.has(l.key) ? `/laptops-photo/${l.key}.webp` : `/laptops-r/${l.key}.webp`;
 const PHOTO = [['ph-galaxy', 'Blue galaxy'], ['ph-gojo', 'Satoru Gojo'], ['ph-jinx', 'Jinx'], ['ph-tanjiro', 'Demon Slayer'], ['ph-graffiti', 'Red graffiti'], ['ph-starry', 'Starry Night'], ['ph-boondocks', 'Boondocks'], ['ph-joker', 'Joker'], ['ph-marvel', 'Marvel comics'], ['ph-girlpower', 'Girl power'], ['ph-pink', 'Pink waves'], ['ph-rose', 'Rose waves'], ['ph-avengers', 'Avengers'], ['ph-bvs', 'Batman v Superman'], ['ph-spidey-collage', 'Spider-Verse collage'], ['ph-porsche93', 'Porsche 93 race'], ['ph-spidey-comics', 'Spider-Man comics'], ['ph-amg-red', 'AMG red grunge'], ['ph-peaky', 'Peaky Blinders'], ['ph-stay-focused', 'Stay focused'], ['ph-kali', 'Kali hacker'], ['ph-reality', 'Wake up to reality'], ['ph-circuit', 'Circuit board'], ['ph-cute-hacker', 'Cute hacker'], ['ph-code-reaper', 'Code reaper'], ['ph-mountains', 'Comic mountains'], ['ph-coder-bomb', 'Coder sticker bomb'], ['ph-miles', 'Miles Morales'], ['ph-spidey-scrapbook', 'Spidey scrapbook'], ['ph-coding', 'Coding doodles'], ['ph-panther', 'Black Panther blueprint'], ['ph-waterfall', 'Blossom waterfall'], ['ph-tech-logos', 'Tech logos'], ['ph-astronaut', 'Astronaut puzzle'], ['ph-wasd', 'WASD splash'], ['ph-batman', 'Dark Knight'], ['ph-spider-logo', 'Spider logo'], ['ph-panda', 'Peeking panda'], ['ph-joker-ink', 'Joker ink'], ['ph-heisenberg', 'Heisenberg blueprint'], ['ph-butterfly', 'Glitter butterfly'], ['ph-heart-pink', 'Finger heart'], ['ph-heart-fluffy', 'Fluffy finger heart'], ['ph-popbomb', 'Pop culture bomb']];
 const SOLID = [['s-black', 'Matte black', '#121213'], ['s-white', 'Gloss white', '#f2f2f0'], ['s-sand', 'Sand', '#d8cbb6'], ['s-red', 'Deep red', '#6e1a1f'], ['s-navy', 'Navy', '#1d2a44']];
 
@@ -351,7 +357,7 @@ function vPick() {
     const r = LAPS.filter(l => (!fTag || l.tags.includes(fTag)) && (!fBrand || l.brand === fBrand) && words.every(w => (l.brand + ' ' + l.name).toLowerCase().includes(w)));
     $('#cnt').textContent = `${r.length} match${r.length === 1 ? '' : 'es'}`;
     $('#res').innerHTML = r.slice(0, shown).map(l => { const a = l.w / l.d, h = 36, w = Math.min(54, h * a);
-      return `<button class="row" data-i="${l.i}"><span class="ic"><span style="width:${w}px;height:${w / a}px;margin:auto;background:${LCOL[l.cols[0]]}"></span></span>
+      return `<button class="row" data-i="${l.i}"><span class="ic lp"><img src="${lapPic(l)}" alt="" loading="lazy" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement('span'),{style:'width:${w}px;height:${w / a}px;background:${LCOL[l.cols[0]]}'}))"></span>
       <span><b>${esc(l.brand)} ${esc(l.name)}</b><span class="lbl">${l.scr}″ · ${l.w} × ${l.d} cm · ${l.t} mm</span></span>
       <span class="tagg">${l.tags.includes('g') ? 'Gamer' : l.tags.includes('p') ? 'Dev' : 'Student'}</span></button>`; }).join('') +
       (r.length > shown ? `<button class="more lbl" id="more" style="color:#fff">Show ${Math.min(40, r.length - shown)} more</button>` : '');
@@ -560,7 +566,7 @@ function lidMark(g, W, H, light, think) {
   g.fillText(t, 0, fs * .04); g.restore(); }
 let SCR = null;
 function paintDesk(g, x0, y0, sw, sh) {
-  const now = new Date(), hm = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }), dt = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric', year: 'numeric' });
+  const now = window.__shotTime ? new Date(window.__shotTime) : new Date(), hm = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }), dt = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric', year: 'numeric' });
   g.save(); g.beginPath(); g.rect(x0, y0, sw, sh); g.clip();
   if (L.brand === 'Apple') {
     const gr = g.createLinearGradient(x0, y0, x0 + sw, y0 + sh); gr.addColorStop(0, '#1d2b64'); gr.addColorStop(.45, '#7a3f9e'); gr.addColorStop(.75, '#e2794f'); gr.addColorStop(1, '#f6c27a'); g.fillStyle = gr; g.fillRect(x0, y0, sw, sh);
@@ -596,7 +602,7 @@ function paintDesk(g, x0, y0, sw, sh) {
   g.restore();
 }
 function drawScreen() {
-  const c = SCR.image, g = c.getContext('2d'), W = c.width, H = c.height, now = new Date(), b = W * .022, chin = L.style === 'mac' ? 0 : W * .02;
+  const c = SCR.image, g = c.getContext('2d'), W = c.width, H = c.height, now = window.__shotTime ? new Date(window.__shotTime) : new Date(), b = W * .022, chin = L.style === 'mac' ? 0 : W * .02;
   const hm = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }), dt = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric', year: 'numeric' });
   g.fillStyle = '#050505'; g.fillRect(0, 0, W, H); const x0 = b, y0 = b, sw = W - 2 * b, sh = H - 2 * b - chin;
   paintDesk(g, x0, y0, sw, sh);
@@ -775,7 +781,7 @@ const snap = () => { hist.push(JSON.stringify({ items, skin, artT })); if (hist.
 const mode = '3d', realSet = () => null, phLayout = () => {}, phLid = () => {};
 
 // ---------- step 2: editor ----------
-const C0 = CAT.free || D.cats.find(c => !['xl', 'mix'].includes(c.id)) || D.cats[0];   // open on a full category, not the one-sticker lid centrepieces
+const C0 = D.cats.find(c => !['xl', 'mix'].includes(c.id)) || D.cats[0];   // open on a full category, not the one-sticker lid centrepieces
 let tab = 'skins', ccat = C0.id, cpack = C0.packs[0];
 async function vEditor() {
   syncSize();
@@ -952,6 +958,6 @@ if (LL) { L = LL; col = L.cols.includes(fromLink.c) ? fromLink.c : L.cols[0]; fo
   for (const k in items) items[k] = (st.items && st.items[k] || []).filter(o => CODE[o.c]); Object.assign(skin, st.skin || {}); vEditor(); } else { vPick(); warmGL(); } warmGL();
 addEventListener('hashchange', () => { if (location.hash === '#pick') vPick(); });
 (() => { const n = Object.values(store.get('sl-packs', {}) || {}).reduce((a, b) => a + b, 0) + Object.values(store.get('sl-cart', {}) || {}).reduce((a, b) => a + b, 0) + (store.get('sl-dsg', null) ? 1 : 0); const b = $('#hbd'); if (b && n) { b.hidden = false; b.textContent = n; } })();
-fetch('/free/free.json').then(r => r.ok ? r.json() : null).then(f => { if (!f) return; try { localStorage.setItem('sl-free-cat', JSON.stringify(f)); } catch (e) {} if (addFree(f) && $('#tray')) { ccat = 'free'; cpack = 'free-stickers'; pane(); } }).catch(() => {});
+fetch('/free/free.json').then(r => r.ok ? r.json() : null).then(f => { if (!f) return; try { localStorage.setItem('sl-free-cat', JSON.stringify(f)); } catch (e) {} addFree(f); }).catch(() => {});
 fetch('/api/catalog/').then(r => r.ok ? r.json() : null).then(c => { if (!c) return; try { localStorage.setItem('sl-drops', JSON.stringify(c)); } catch (e) {} if (addDrops(c) && $('#tray')) pane(); }).catch(() => {});
 </script></body></html>
