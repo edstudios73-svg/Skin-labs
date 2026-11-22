@@ -158,35 +158,66 @@ export async function produce({ order: o, job, plan, base, settings = {}, assets
   // ---- stickers (packs, singles, free sticker, custom designer stickers) ----
   const stk = []; const want = (code, longMm, q, src, from) => { for (let i = 0; i < q; i++) stk.push({ code, longMm, src, from }); };
   const sheetSize = it => it.size === 'A5' ? 'A5' : it.size === 'A3' ? 'A3' : 'A4';
-  const groups = {};
+  // a group is one kind of sheet: "auto" (nested by the system), "pack" (one pack = one sheet, shrunk to fit if needed)
+  // or "fixed" (the customer/owner already arranged the stickers: print them exactly where they were placed)
+  const groups = []; const grp = (size, mode, title) => { const g = { size, mode, title, list: [] }; groups.push(g); return g; };
+  let auto = null; const autoA4 = () => auto ||= grp('A4', 'auto', '');
+  const boxOf = l => ({ x: +l.x || 0, y: +l.y || 0, w: +l.w || 0, h: +l.h || 0 });
   for (const it of job.items) {
     if (it.kind === 'sticker-pack') { const p = assets.pack(it.design); if (!p) { check(`Pack ${it.design}`, false, `Pack ${it.design} not found in the shop data`); continue; }
       const codes = it.size === 'A5' && p.a5 ? p.a5 : p.items.map(x => x[0]), xl = p.size === 'XL';
-      for (let q = 0; q < it.q; q++) { const g = (groups[`${xl ? 'A4' : sheetSize({ size: it.size === 'A5' ? 'A5' : p.size })}`] ||= []); for (const c of codes) g.push({ code: c, longMm: xl ? s.xlMm : s.stickerMm, src: assets.stickerSrc(c, p), from: p.name }); } }
-    else if (it.kind === 'singles') { const g = (groups.A4 ||= []); for (const c of it.codes) for (let i = 0; i < c.q; i++) g.push({ code: c.code, longMm: s.stickerMm, src: assets.stickerSrc(c.code), from: 'Single stickers' }); }
-    else if (it.kind === 'free-sticker') (groups.A4 ||= []).push({ code: it.code, longMm: s.stickerMm, src: assets.stickerSrc(it.code), from: 'Free sticker' });
-    else if (it.kind === 'custom-stickers' && o.design && Array.isArray(o.design.layout)) { const g = (groups[sheetSize({ size: o.design.size })] ||= []); for (const l of o.design.layout) if (l && l.c) g.push({ code: l.c, longMm: Math.max(l.w || 0, l.h || 0) || s.stickerMm, src: assets.stickerSrc(l.c), from: 'Custom pack' }); }
+      for (let q = 0; q < it.q; q++) { const g = xl ? autoA4() : grp(sheetSize({ size: it.size === 'A5' ? 'A5' : p.size }), 'pack', p.name); for (const c of codes) g.list.push({ code: c, longMm: xl ? s.xlMm : s.stickerMm, src: assets.stickerSrc(c, p), from: p.name }); } }
+    else if (it.kind === 'singles' && o.picks && Array.isArray(o.picks.layout) && o.picks.layout.length) { const g = grp(sheetSize({ size: o.picks.size }), 'fixed', `${o.picks.layout.length} singles`);
+      for (const l of o.picks.layout) if (l && l.c) g.list.push({ code: l.c, longMm: Math.max(10, Math.max(l.w || 0, l.h || 0) - s.spacing) || s.stickerMm, src: assets.stickerSrc(l.c), from: 'Single stickers', box: boxOf(l) }); }
+    else if (it.kind === 'singles') { const g = autoA4(); for (const c of it.codes) for (let i = 0; i < c.q; i++) g.list.push({ code: c.code, longMm: s.stickerMm, src: assets.stickerSrc(c.code), from: 'Single stickers' }); }
+    else if (it.kind === 'free-sticker') { if (o.design && Array.isArray(o.design.layout) && o.design.layout.some(l => l && l.c === it.code)) continue;   // already placed on the customer's own sheet
+      autoA4().list.push({ code: it.code, longMm: s.stickerMm, src: assets.stickerSrc(it.code), from: 'Free sticker' }); }
+    else if (it.kind === 'custom-stickers' && o.design && Array.isArray(o.design.layout)) { const g = grp(sheetSize({ size: o.design.size }), 'fixed', o.design.packName || 'Custom pack');
+      for (const l of o.design.layout) if (l && l.c) g.list.push({ code: l.c, longMm: Math.max(10, Math.max(l.w || 0, l.h || 0) - s.spacing) || s.stickerMm, src: assets.stickerSrc(l.c), from: 'Custom pack', box: boxOf(l) }); }
   }
   const shapes = new Map(), stickerPaths = [], sheetsOut = [];
-  for (const [size, list] of Object.entries(groups)) {
-    const placed = [];
-    for (const it of list) { const kk = `${it.code}@${it.longMm}`; if (!shapes.has(kk)) { try { const buf = await assets.fetch(it.src); shapes.set(kk, { ...(await stickerShape(buf, it.longMm, s)), buf }); } catch (e) { shapes.set(kk, { error: e.message }); } }
-      const sh = shapes.get(kk); if (sh.error) { check(`Sticker ${it.code}`, false, `Artwork for ${it.code} could not be read (${sh.error})`); continue; } placed.push({ ...it, w: sh.w, h: sh.h, kk }); }
-    if (!placed.length) continue;
-    const [W, H] = SHEET[size], sheets = nest(placed, W, H, s);
-    for (const [n, sheet] of sheets.entries()) {
+  const shapeOf = async it => { const kk = `${it.code}@${it.longMm}`; if (!shapes.has(kk)) { try { const buf = await assets.fetch(it.src); shapes.set(kk, { ...(await stickerShape(buf, it.longMm, s)), buf }); } catch (e) { shapes.set(kk, { error: e.message }); } } return kk; };
+  for (const g of groups) {
+    if (!g.list.length) continue;
+    const size = g.size, [W, H] = SHEET[size];
+    g.list.forEach((x, i) => x.idx = i);
+    const load = async list => { const out = []; for (const it of list) { const kk = await shapeOf(it), sh = shapes.get(kk); if (sh.error) { check(`Sticker ${it.code}`, false, `Artwork for ${it.code} could not be read (${sh.error})`); continue; } out.push({ ...it, w: sh.w, h: sh.h, kk }); } return out; };
+    let placed = await load(g.list); if (!placed.length) continue;
+    let sheets;
+    if (g.mode === 'fixed') {   // keep the arrangement: centre each sticker in the box it had, never off the sheet
+      const at = p => ({ ...p, x: Math.max(0, Math.min(W - p.w, p.box.x + (p.box.w - p.w) / 2)), y: Math.max(0, Math.min(H - p.h, p.box.y + (p.box.h - p.h) / 2)) });
+      let one = placed.map(at);
+      const hit = (a, b) => a.x < b.x + b.w - .5 && b.x < a.x + a.w - .5 && a.y < b.y + b.h - .5 && b.y < a.y + a.h - .5;
+      const poly = p => shapes.get(p.kk).path.map(([x, y]) => [x + p.x, y + p.y]);
+      const inside = ([x, y], P) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) if ((P[i][1] > y) !== (P[j][1] > y) && x < (P[j][0] - P[i][0]) * (y - P[i][1]) / (P[j][1] - P[i][1]) + P[i][0]) c = !c; return c; };
+      const cross = (p, q, r, t) => { const d = (a, b, c) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]); return d(p, q, r) * d(p, q, t) < 0 && d(r, t, p) * d(r, t, q) < 0; };
+      const touch = (A, B) => A.some(pt => inside(pt, B)) || B.some(pt => inside(pt, A)) || A.some((p, i) => { const q = A[(i + 1) % A.length]; return B.some((r, k) => cross(p, q, r, B[(k + 1) % B.length])); });
+      const clash = () => { const bad = new Set(); one.forEach((a, i) => one.forEach((b, j) => { if (j > i && hit(a, b) && touch(poly(a), poly(b))) { bad.add(i); bad.add(j); } })); return bad; };
+      for (let round = 0; round < 8; round++) {   // stickers packed too tightly: shrink only the ones that touch, a little at a time, still centred in their place
+        const bad = clash(); if (!bad.size) break;
+        for (const i of bad) { const p = one[i], mm = p.longMm * .95; if (mm < g.list[p.idx].longMm * .7) continue; const kk = await shapeOf({ ...p, longMm: mm }), sh = shapes.get(kk); if (sh.error) continue; one[i] = at({ ...p, longMm: mm, kk, w: sh.w, h: sh.h }); } }
+      const ov = clash().size > 0, mk = regMarks(W, H, s).some(m => one.some(a => hit(a, m)));
+      check(`${g.title}: original arrangement kept`, !ov && !mk, ov ? 'Some cut lines touch in the original arrangement: check the cut before printing' : mk ? 'A sticker sits on a registration mark corner: check before printing' : `${one.length} stickers placed as arranged on ${size}`, true);
+      sheets = [one];
+    } else if (g.mode === 'pack') {   // one pack is one sheet: shrink the stickers a little if they would spill onto a second sheet
+      sheets = nest(placed, W, H, s);
+      for (let mm = s.stickerMm - 3; sheets.length > 1 && mm >= 30; mm -= 3) { placed = await load(g.list.map(x => ({ ...x, longMm: mm }))); sheets = nest(placed, W, H, s); }
+    } else sheets = nest(placed, W, H, s);
+    for (const sheet of sheets) {
       const marks = regMarks(W, H, s), paths = sheet.map(p => shapes.get(p.kk).path.map(([x, y]) => [x + p.x, y + p.y]));
-      const layers = []; for (const p of sheet) { const sh = shapes.get(p.kk); layers.push({ input: await sharp(sh.buf).resize(Math.min(px(sh.art.w, s.dpi), px(W, s.dpi) - px(p.x + sh.art.x, s.dpi)), Math.min(px(sh.art.h, s.dpi), px(H, s.dpi) - px(p.y + sh.art.y, s.dpi)), { fit: 'fill' }).png().toBuffer(), left: px(p.x + sh.art.x, s.dpi), top: px(p.y + sh.art.y, s.dpi) }); }
+      const layers = []; for (const p of sheet) { const sh = shapes.get(p.kk), L = Math.max(0, px(p.x + sh.art.x, s.dpi)), T = Math.max(0, px(p.y + sh.art.y, s.dpi));
+        layers.push({ input: await sharp(sh.buf).resize(Math.max(1, Math.min(px(sh.art.w, s.dpi), px(W, s.dpi) - L)), Math.max(1, Math.min(px(sh.art.h, s.dpi), px(H, s.dpi) - T)), { fit: 'fill' }).png().toBuffer(), left: L, top: T }); }
       if (marks.length) layers.push({ input: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${px(W, s.dpi)}" height="${px(H, s.dpi)}" viewBox="0 0 ${W} ${H}">${marks.map(m => `<rect x="${m.x}" y="${m.y}" width="${m.w}" height="${m.h}" fill="#000"/>`).join('')}</svg>`), left: 0, top: 0 });
       const png = await sharp({ create: { width: px(W, s.dpi), height: px(H, s.dpi), channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } } }).composite(layers).png({ compressionLevel: 8 }).withMetadata({ density: s.dpi }).toBuffer();
-      sheetsOut.push({ size, n: sheetsOut.filter(x => x.size === size).length + 1, W, H, png, paths, marks, count: sheet.length }); stickerPaths.push(...paths);
+      sheetsOut.push({ size, title: g.title, n: sheetsOut.filter(x => x.size === size).length + 1, W, H, png, paths, marks, count: sheet.length }); stickerPaths.push(...paths);
     }
   }
   if (sheetsOut.length) {
     const multi = sheetsOut.length > 1;
-    for (const sh of sheetsOut) add(`03-STICKER-ARTWORK/sheet-${sh.size}-${sh.n}.png`, sh.png, 'image/png', { note: `${sh.count} stickers on ${sh.size}` });
+    const nm = sh => `${sh.title ? safe(sh.title) + '-' : 'sheet-'}${sh.size}-${sh.n}`;
+    for (const sh of sheetsOut) add(`03-STICKER-ARTWORK/${nm(sh)}.png`, sh.png, 'image/png', { note: `${sh.title ? sh.title + ': ' : ''}${sh.count} stickers on ${sh.size}` });
     add('04-STICKER-CUTLINES.pdf', await cutPDF(sheetsOut.map(sh => ({ W: sh.W, H: sh.H, png: sh.png, paths: sh.paths, marks: sh.marks })), s, { title: `${o.id} sticker cut lines` }), 'application/pdf');
-    for (const sh of sheetsOut) add(`05-STICKER-CUTLINES${multi ? `-${sh.size}-${sh.n}` : ''}.svg`, Buffer.from(cutSVG(sh.W, sh.H, sh.paths, sh.marks, s, `${o.id} sticker cut lines ${sh.size} ${sh.n}`)), 'image/svg+xml');
+    for (const sh of sheetsOut) add(`05-STICKER-CUTLINES${multi ? `-${nm(sh)}` : ''}.svg`, Buffer.from(cutSVG(sh.W, sh.H, sh.paths, sh.marks, s, `${o.id} ${sh.title || 'sticker'} cut lines ${sh.size} ${sh.n}`)), 'image/svg+xml');
     for (const [kk, sh] of shapes) { if (sh.error) continue; const code = kk.split('@')[0];
       add(`12-TRANSPARENT-ARTWORK/${safe(code)}.png`, await sharp(sh.buf).ensureAlpha().resize(px(sh.art.w, s.dpi), px(sh.art.h, s.dpi), { fit: 'fill' }).png().withMetadata({ density: s.dpi }).toBuffer(), 'image/png');
       const PW = Math.max(px(sh.w, 150), px(sh.art.x, 150) + px(sh.art.w, 150)) + 2, PH = Math.max(px(sh.h, 150), px(sh.art.y, 150) + px(sh.art.h, 150)) + 2;   // rounding never crops the art
@@ -196,7 +227,7 @@ export async function produce({ order: o, job, plan, base, settings = {}, assets
     check('Sticker contours are closed vector paths', stickerPaths.every(closedOk), `${stickerPaths.length} paths`);
     check('Sticker transparency', [...shapes.values()].every(x => x.error || x.transparent), [...shapes.values()].filter(x => !x.error && !x.transparent).length ? 'Some stickers have no transparency: rounded-rectangle cut used' : 'All stickers transparent', true);
     check('Registration marks', !s.regMarks || sheetsOut.every(x => x.marks.length === 3), s.regMarks ? '3 marks per sheet' : 'off in settings');
-    check('No overlaps on sheets', true, `spacing ${s.spacing} mm, shelf nesting`);
+    check('No overlaps on sheets', true, `spacing ${s.spacing} mm, shelf nesting (arranged sheets checked separately)`);
   }
 
   // ---- laptop skins + keyboard from verified templates only ----
