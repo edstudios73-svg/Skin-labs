@@ -441,20 +441,23 @@ function prodCard(x, i = 9) {
   const pic = x.spr ? `<span class="pc-spr">${spr(x.spr[0], x.spr[1], 150)}</span>`
     : `<img src="${x.img}" alt="${esc(x.name)}" loading="${i < 8 ? 'eager' : 'lazy'}" decoding="async">`;
   const q = x.kind === 'single' ? cart[x.id] : packs[x.kind === 'skin' ? skinKey(x.id) : x.id];
+  const sv = x.kind === 'pack' ? x.id : x.kind === 'skin' ? 'sk:' + x.id : '';
   return `<article class="pc ${x.kind === 'skin' ? 'is-skin' : ''}" data-key="${esc(x.key)}">
-    <a class="pc-img" href="${x.href}" aria-label="${esc(x.name)}">${x.isNew ? '<span class="pc-tag">New</span>' : ''}${pic}</a>
+    <div class="pc-im"><a class="pc-img" href="${x.href}" aria-label="${esc(x.name)}">${x.isNew ? '<span class="pc-tag">New</span>' : ''}${pic}</a>${sv ? heart(sv, x.name) : ''}</div>
     <div class="pc-meta"><span class="pc-cat">${esc(x.cat)}</span><a class="pc-name" href="${x.href}">${esc(x.name)}</a>
       <div class="pc-row"><span class="pc-price">${x.from ? 'from ' : ''}${CUR}${x.price}</span><span class="pc-note">${esc(x.note)}</span></div></div>
     <div class="pc-act"><a class="pc-btn pc-design" href="${x.design}">Design on my laptop</a>
       <button type="button" class="pc-btn pc-add" data-add="${esc(x.key)}">${q ? `In cart (${q}) · add` : 'Add to cart'}</button></div></article>`;
 }
+const hasLap = () => { const d = store.get('sl-design3', null); return !!(d && d.scr); };
+const myLap = () => { const d = store.get('sl-design3', null); return d && d.scr ? { n: d.n, scr: d.scr } : null; };
 const mySkinZ = () => { const d = store.get('sl-design3', null); return d && d.scr ? skinFor(d.scr) : 'M'; };
 const skinKey = id => `skin~${id}~${mySkinZ()}`;
 function addProduct(key) {
   const [t, id] = key.startsWith('skin~') ? ['skin', key.slice(5)] : key.startsWith('one~') ? ['single', key.slice(4)] : ['pack', key];
   let name;
   if (t === 'single') { if (!CODE[id]) return; cart[id] = Math.min((cart[id] || 0) + 1, 99); saveCart(); name = `Sticker ${id}`; }
-  else if (t === 'skin') { if (!SKIN[id]) return; const k = skinKey(id); setPack(k, (packs[k] || 0) + 1); name = `${SKIN[id][1]} skin`; }
+  else if (t === 'skin') { if (!SKIN[id]) return; if (!hasLap()) { toast('Pick your laptop so the skin is cut to its size'); setTimeout(() => location.href = `/design/?skin=${encodeURIComponent(id)}`, 600); return; } const k = skinKey(id); setPack(k, (packs[k] || 0) + 1); name = `${SKIN[id][1]} skin`; }
   else { if (!PK[id]) return; setPack(id, (packs[id] || 0) + 1); name = PK[id].nice; }
   buzz(); updBar();
   document.querySelectorAll(`.pc[data-key="${CSS.escape(key)}"] .pc-add`).forEach(b => { const q = t === 'single' ? cart[id] : packs[t === 'skin' ? skinKey(id) : id]; b.textContent = `In cart (${q}) · add`; b.classList.add('done'); setTimeout(() => b.classList.remove('done'), 900); });
@@ -462,6 +465,12 @@ function addProduct(key) {
   toast(`Added to cart: ${name}`);
 }
 let SHOPF = store.get('sl-shopf', 'all'), SHOPN = 24;
+const prodOfItem = x => !x ? null : x.type === 'pack' && PK[x.k] ? prodPack(PK[x.k]) : x.type === 'skin' && SKIN[x.k.slice(3)] ? prodSkin(SKIN[x.k.slice(3)]) : null;
+// recently viewed: packs and skins this phone opened, newest first
+const seen = k => store.set('sl-viewed', [k, ...(store.get('sl-viewed', []) || []).filter(x => x !== k)].slice(0, 12));
+const viewed = (n = 4, skip) => (store.get('sl-viewed', []) || []).filter(k => k !== skip).map(k => prodOfItem(itemOf(k))).filter(Boolean).slice(0, n);
+// Add to cart / Get this look work on every page that shows product cards
+document.addEventListener('click', e => { const a = e.target.closest('[data-add]'); if (a) { e.preventDefault(); addProduct(a.dataset.add); return; } if (e.target.closest('[data-idea]')) { e.preventDefault(); openInspo(); } });
 function shopList(f) {
   if (f === 'skins') return shopSkins().map(prodSkin);
   if (f === 'packs') return shopPacks().map(prodPack);
@@ -509,6 +518,7 @@ function vHome() {
       <div class="pgrid" id="g-grid"></div>
       <button type="button" class="b3 b3-o g-more" id="g-more" hidden>Show more</button>
     </section>
+    ${shopRow('s-seen', 'Recently Viewed', 'Pick up where you left off.', viewed(4), '')}
     ${shopRow('s-new', 'New Arrivals', 'Fresh from the print table.', fresh, 'all')}
     ${shopRow('s-trend', 'Trending Designs', 'What people in Accra are ordering right now.', trend, '')}
     ${shopRow('s-skins', 'Laptop Skins', `Full-lid vinyl skins, cut to your laptop. From ${CUR}${SKINP.S.price}.`, skins4, 'skins')}
@@ -530,8 +540,7 @@ function vHome() {
   $('#g-cat').onchange = e => setF(e.target.value || 'all');
   $('#g-more').onclick = () => { SHOPN += 24; shopGrid(); };
   app.querySelectorAll('.srow-all[data-f]').forEach(b => b.onclick = () => { setF(b.dataset.f); $('#explore').scrollIntoView({ behavior: 'smooth' }); });
-  app.onclick = e => { if (!$('#explore')) return; const a = e.target.closest('[data-add]'); if (a) { e.preventDefault(); addProduct(a.dataset.add); return; }
-    if (e.target.closest('[data-idea]')) { e.preventDefault(); openInspo(); }
+  app.onclick = e => { if (!$('#explore')) return;
     const ex = e.target.closest('a[href="#explore"]'); if (ex) { e.preventDefault(); $('#explore').scrollIntoView({ behavior: 'smooth' }); } };
   setF(SHOPF === 'all' || SHOPF === 'skins' || SHOPF === 'packs' || SHOPF === 'singles' || CAT[SHOPF] ? SHOPF : 'all');
   if ($('#again')) $('#again').onclick = reorder;
@@ -546,6 +555,7 @@ function vAccount() {
         <form class="acc-t" id="acc-t"><label class="lbl" for="acc-ti">Track an order</label><div><input id="acc-ti" placeholder="e.g. SL-ABC12" autocapitalize="characters"><button class="b3 b3-w" type="submit">Track</button></div></form></div>
       <a class="acc-b acc-l" href="#mine"><h2>Saved designs</h2><p>${mine.length ? `${mine.length} design${mine.length > 1 ? 's' : ''} from the Design Studio` : 'Designs you save in the Design Studio show up here.'}</p><i>Open →</i></a>
       <a class="acc-b acc-l" href="#saved"><h2>Wishlist</h2><p>${SAVED.length ? `${SAVED.length} saved item${SAVED.length > 1 ? 's' : ''}` : 'Tap the heart on any design to keep it here.'}</p><i>Open →</i></a>
+      ${viewed(4).length ? `<div class="acc-b acc-rv"><h2>Recently viewed</h2><div class="pgrid">${viewed(4).map(prodCard).join('')}</div></div>` : ''}
       <a class="acc-b acc-l" href="#help"><h2>Help &amp; contact</h2><p>Delivery, care and custom sizes. A real person on WhatsApp.</p><i>Open →</i></a>
     </div></section>${footer}`;
   $('#acc-t').onsubmit = e => { e.preventDefault(); const v = $('#acc-ti').value.trim().toUpperCase(); if (v) location.href = `/o/${encodeURIComponent(v)}/`; };
@@ -563,6 +573,7 @@ function vCat(c) {
   </section>${footer}`;
 }
 function vPack(p) {
+  seen(p.id);
   const c = CAT[p.cat], lt = light(p.bg);
   app.innerHTML = `<section class="sec" style="padding-top:14px">
     <div class="crumb"><a href="#">Categories</a> / <a href="#${c.id}">${esc(c.name)}</a></div>
@@ -580,6 +591,7 @@ function vPack(p) {
         : `<div class="sizes one"><div class="on"><b>A3</b><span>Pick &amp; mix sheet</span><span>${p.items.length} stickers</span><em>${CUR}${p.price}</em></div></div>`}
         <button class="btn wa" type="button" id="orderpack"><span id="op-t">Order</span></button>
         <button class="btn o" type="button" data-packbtn="${p.id}" id="addpack"></button>
+        <a class="btn o" href="/design/?pack=${encodeURIComponent(p.id)}">Design on my laptop</a>
         ${FREE.length ? `<p class="frl"><i>FREE</i> + 1 free sticker with every order · pick it at checkout</p>` : ''}
       </div>
     </div>
@@ -1193,7 +1205,7 @@ function vSearch(q0) {
     const nf = [SF.type, SF.cat, SF.max, SF.size, SF.newOnly].filter(Boolean).length; $('#sfn').textContent = nf ? nf : '';
     ['sft', 'sfc', 'sfz', 'sfm'].forEach((id, i) => { const v = String([SF.type, SF.cat, SF.size, SF.max || 0][i]); $('#' + id).querySelectorAll('.chip').forEach(c => { const on = c.dataset.v === v || (c.dataset.v === '' && !v) || (id === 'sfm' && c.dataset.v === v); c.classList.toggle('on', on); c.setAttribute('aria-pressed', on); }); });
     $('#srec').innerHTML = !q && recent.length ? `<div class="rec"><span class="lbl">Recent searches</span>${recent.map(r => `<button type="button" class="chip" data-q="${esc(r)}">${esc(r)}</button>`).join('')}<button type="button" class="lnk" id="srx">Clear history</button></div>` : '';
-    $('#sres').innerHTML = res.length ? `<p class="lbl" style="margin:10px 0">${res.length} result${res.length > 1 ? 's' : ''}${q ? ` for “${esc(q)}”` : ''}</p><div class="srl">${res.slice(0, 120).map(itemCard).join('')}</div>`
+    $('#sres').innerHTML = res.length ? `<p class="lbl" style="margin:10px 0">${res.length} result${res.length > 1 ? 's' : ''}${q ? ` for “${esc(q)}”` : ''}</p><div class="pgrid">${res.slice(0, 120).map(x => { const pr = prodOfItem(x); return pr ? prodCard(pr) : itemCard(x); }).join('')}</div>`
       : `<div class="none"><b>No matching stickers found.</b><p>Try another word, or one of these:</p><div class="hs">${['anime', 'football', 'coding', 'gaming', 'girly', 'cars', 'marvel'].map(w => `<button type="button" class="chip" data-q="${w}">${w}</button>`).join('')}</div>
         <p style="margin-top:12px">Can't find it? <a href="#" id="s-own">Send us your idea</a> and we'll make it.</p></div>`;
     if ($('#srx')) $('#srx').onclick = () => { store.set('sl-recent', []); recent.length = 0; draw(); };
@@ -1271,26 +1283,26 @@ function wireSkins(root) {
   const sc = root.querySelector('#skcat'); if (sc) sc.onclick = e => { const b = e.target.closest('[data-c]'); if (b) { SKC = b.dataset.c; re(); } };
 }
 function skinSheet(id, type) {   // product page for one skin design, in a sheet
-  const sk = SKIN[id]; if (!sk) return; let t = type || SKT, z = store.get('sl-skinsize', 'M');
+  const sk = SKIN[id]; if (!sk) return; seen('sk:' + id); let t = type || SKT; const lap = myLap(), z = mySkinZ();
   let box = $('#sks'); if (!box) { box = document.createElement('div'); box.id = 'sks'; box.className = 'sheet'; document.body.appendChild(box); box.addEventListener('click', e => { if (e.target === box) box.hidden = true; }); }
   const key = () => t === 'lap' ? `skin~${id}~${z}` : `${t}~${id}`, price = () => t === 'lap' ? SKINP[z].price : XP[t];
   const draw = () => { sheetIn(box, `${sk[1]} skin`).innerHTML = `<div class="grab"></div><h3>${esc(STYPE[t][0])} <button type="button" class="chip" id="skx">Close</button></h3>
     <div class="skview">${t === 'lap' ? `<img class="skimg" src="skins/${id}.${IX}" alt="${esc(sk[1])} laptop skin">` : `<img class="skimg" id="skmk" alt="${esc(sk[1])} ${STYPE[t][0].toLowerCase()} preview">`}${heart('sk:' + id, sk[1] + ' skin')}</div>
     <h3 class="skn">${esc(sk[1])}</h3>
     <div class="seg sktype" id="skt2" role="radiogroup" aria-label="What to skin">${Object.entries(STYPE).map(([k, [n, s]]) => `<button type="button" role="radio" aria-checked="${k === t}" class="${k === t ? 'on' : ''}" data-t="${k}"><b>${n.replace(' skin', '')}</b><small>${s}</small></button>`).join('')}</div>
-    ${t === 'lap' ? `<p class="small">Full vinyl skin for the lid, matte laminate, bubble-free. Pick your size:</p>
-      <div class="skz">${Object.entries(SKINP).map(([k, s]) => `<button type="button" data-z="${k}" class="${k === z ? 'on' : ''}" aria-pressed="${k === z}"><b>${s.name}</b><small>${s.fit}</small><i>${CUR}${s.price}</i></button>`).join('')}</div>`
+    ${t === 'lap' ? `<p class="small">Full vinyl skin for the lid, matte laminate, bubble-free, cut to your laptop's exact size.</p>
+      ${lap ? `<div class="sklap"><span class="lbl">Your laptop</span><b>${esc(lap.n)}</b><a href="/design/?skin=${encodeURIComponent(id)}#pick">Change</a></div>` : `<div class="sklap"><span class="lbl">Your laptop</span><b>Not chosen yet</b><span>The price depends on your laptop's size.</span></div>`}`
       : `<p class="small">${t === 'kb' ? 'Covers the keyboard area and palm rest, cut around the keys and the trackpad. Tell us your laptop model at checkout (in the location box) or on WhatsApp.' : 'A skin for the trackpad (the mouse pad on your laptop), cut to its exact size. Tell us your laptop model at checkout or on WhatsApp.'}</p>`}
-    <div class="sum1"><span>${esc(STYPE[t][0])}${t === 'lap' ? ' · ' + SKINP[z].name : ''}</span><b>${CUR}${price()}</b></div>
+    ${t === 'lap' && !lap ? `<a class="btn y" href="/design/?skin=${encodeURIComponent(id)}">Choose my laptop</a><p class="small" style="text-align:center">Pick your model once, then see it on your laptop with the exact price.</p>`
+      : `<div class="sum1"><span>${esc(STYPE[t][0])}${t === 'lap' ? ' · ' + esc(lap.scr) + '″' : ''}</span><b>${CUR}${price()}</b></div>
     <button class="btn y" type="button" id="skbuy">Buy now · ${CUR}${price()}</button>
-    <div class="two"><button class="btn o" type="button" id="skadd">Add to cart</button><a class="btn o" href="/design/" id="sktry">Try it on my laptop</a></div>`;
+    <div class="two"><button class="btn o" type="button" id="skadd">Add to cart</button><a class="btn o" href="/design/?skin=${encodeURIComponent(id)}" id="sktry">Design on my laptop</a></div>`}`;
     $('#skx').onclick = () => box.hidden = true;
     if (t !== 'lap') skinMock(id, t, 600).then(u => { const m = $('#skmk'); if (m && u) m.src = u; });
     $('#skt2').onclick = e => { const b = e.target.closest('[data-t]'); if (b) { t = b.dataset.t; buzz(); draw(); } };
-    const zz = box.querySelector('.skz'); if (zz) zz.onclick = e => { const b = e.target.closest('[data-z]'); if (b) { z = b.dataset.z; store.set('sl-skinsize', z); buzz(); draw(); } };
-    $('#skadd').onclick = () => { const k = key(); setPack(k, (packs[k] || 0) + 1); buzz(); box.hidden = true; toast(`${sk[1]} ${STYPE[t][0].toLowerCase()} added`); };
-    $('#skbuy').onclick = () => { box.hidden = true; buyNow(key()); };
-    if ($('#sktry')) $('#sktry').onclick = () => { const st = store.get('sl-design3', {}) || {}; st.skin = { ...(st.skin || {}), [t === 'kb' ? 'kb' : t === 'tp' ? 'pad' : 'lid']: id }; if (t === 'lap') st.skinSize = z; store.set('sl-design3', st); }; };
+    if ($('#skadd')) $('#skadd').onclick = () => { const k = key(); setPack(k, (packs[k] || 0) + 1); buzz(); box.hidden = true; toast(`${sk[1]} ${STYPE[t][0].toLowerCase()} added`); };
+    if ($('#skbuy')) $('#skbuy').onclick = () => { box.hidden = true; buyNow(key()); };
+    };
   draw(); box.hidden = false; openSheetA11y(box);
 }
 
@@ -1393,8 +1405,10 @@ new MutationObserver(ms => ms.forEach(m => { if (m.attributeName === 'hidden' &&
   .observe(document.body, { subtree: true, attributes: true, attributeFilter: ['hidden'] });
 
 // ---------- router ----------
+function navOn(r) { const k = !r ? 'home' : r === 'inspo' || r === 'mine' ? 'inspo' : r === 'contact' || r === 'help' || r.startsWith('help-') ? 'contact' : r === 'account' || r === 'saved' || r.startsWith('saved=') ? '' : 'shop';
+  ['home', 'shop', 'inspo', 'contact'].forEach(x => { const e = $('#nv-' + x); if (e) { e.classList.toggle('on', x === k); e.toggleAttribute('aria-current', x === k); } }); }
 let cartAt = 0;   // a late re-render (live stickers loading) must not close a cart that was just opened
-function finishRoute(r) { scrollTo(0, 0); ['home', 'design', 'inspo'].forEach(k => { $('#t-' + k).classList.toggle('on', k === 'home'); $('#nv-' + k).classList.toggle('on', k === 'home'); }); updBar(); savedBadge(); document.documentElement.classList.remove('nh'); }
+function finishRoute(r) { scrollTo(0, 0); ['home', 'design', 'inspo'].forEach(k => { $('#t-' + k).classList.toggle('on', k === 'home'); $('#nv-' + k).classList.toggle('on', k === 'home'); }); updBar(); savedBadge(); document.documentElement.classList.remove('nh'); navOn(route()); }
 function render() {
   const r = route();
   if (!r && Date.now() - cartAt < 15000 && !$('#cart').hidden) { vHome(); $('#cart').hidden = false; updBar(); return; }
@@ -1411,7 +1425,7 @@ function render() {
   scrollTo(0, 0);
   const tab = r === 'inspo' || r === 'mine' ? 'inspo' : r.startsWith('design') || r === 'studio' ? 'design' : 'home'; document.body.classList.toggle('is-design', tab === 'design' && r !== 'design-pick' && !!G.lap);
   ['home', 'design', 'inspo'].forEach(k => { $('#t-' + k).classList.toggle('on', tab === k); $('#nv-' + k).classList.toggle('on', tab === k); });
-  updBar(); savedBadge(); document.documentElement.classList.remove('nh');
+  updBar(); savedBadge(); document.documentElement.classList.remove('nh'); navOn(r);
 }
 addEventListener('hashchange', render);
 fetch('/free/free.json').then(r => r.ok ? r.json() : null).then(f => { if (!f) return; try { localStorage.setItem('sl-free-cat', JSON.stringify(f)); } catch (e) {} if (!FREE.length) { addFree(f); const y = scrollY; render(); scrollTo(0, y); } }).catch(() => {});
