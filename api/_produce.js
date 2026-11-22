@@ -175,7 +175,7 @@ export async function produce({ order: o, job, plan, base, settings = {}, assets
     else if (it.kind === 'custom-stickers' && o.design && Array.isArray(o.design.layout)) { const g = grp(sheetSize({ size: o.design.size }), 'fixed', o.design.packName || 'Custom pack');
       for (const l of o.design.layout) if (l && l.c) g.list.push({ code: l.c, longMm: Math.max(10, Math.max(l.w || 0, l.h || 0) - s.spacing) || s.stickerMm, src: assets.stickerSrc(l.c), from: 'Custom pack', box: boxOf(l) }); }
   }
-  const shapes = new Map(), stickerPaths = [], sheetsOut = [];
+  const shapes = new Map(), stickerPaths = [], sheetsOut = [], used = new Set();   // used: the sticker sizes that really went on a sheet
   const shapeOf = async it => { const kk = `${it.code}@${it.longMm}`; if (!shapes.has(kk)) { try { const buf = await assets.fetch(it.src); shapes.set(kk, { ...(await stickerShape(buf, it.longMm, s)), buf }); } catch (e) { shapes.set(kk, { error: e.message }); } } return kk; };
   for (const g of groups) {
     if (!g.list.length) continue;
@@ -209,7 +209,7 @@ export async function produce({ order: o, job, plan, base, settings = {}, assets
         layers.push({ input: await sharp(sh.buf).resize(Math.max(1, Math.min(px(sh.art.w, s.dpi), px(W, s.dpi) - L)), Math.max(1, Math.min(px(sh.art.h, s.dpi), px(H, s.dpi) - T)), { fit: 'fill' }).png().toBuffer(), left: L, top: T }); }
       if (marks.length) layers.push({ input: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${px(W, s.dpi)}" height="${px(H, s.dpi)}" viewBox="0 0 ${W} ${H}">${marks.map(m => `<rect x="${m.x}" y="${m.y}" width="${m.w}" height="${m.h}" fill="#000"/>`).join('')}</svg>`), left: 0, top: 0 });
       const png = await sharp({ create: { width: px(W, s.dpi), height: px(H, s.dpi), channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } } }).composite(layers).png({ compressionLevel: 8 }).withMetadata({ density: s.dpi }).toBuffer();
-      sheetsOut.push({ size, title: g.title, n: sheetsOut.filter(x => x.size === size).length + 1, W, H, png, paths, marks, count: sheet.length }); stickerPaths.push(...paths);
+      sheetsOut.push({ size, title: g.title, n: sheetsOut.filter(x => x.size === size).length + 1, W, H, png, paths, marks, count: sheet.length }); stickerPaths.push(...paths); for (const p of sheet) used.add(p.kk);
     }
   }
   if (sheetsOut.length) {
@@ -218,7 +218,9 @@ export async function produce({ order: o, job, plan, base, settings = {}, assets
     for (const sh of sheetsOut) add(`03-STICKER-ARTWORK/${nm(sh)}.png`, sh.png, 'image/png', { note: `${sh.title ? sh.title + ': ' : ''}${sh.count} stickers on ${sh.size}` });
     add('04-STICKER-CUTLINES.pdf', await cutPDF(sheetsOut.map(sh => ({ W: sh.W, H: sh.H, png: sh.png, paths: sh.paths, marks: sh.marks })), s, { title: `${o.id} sticker cut lines` }), 'application/pdf');
     for (const sh of sheetsOut) add(`05-STICKER-CUTLINES${multi ? `-${nm(sh)}` : ''}.svg`, Buffer.from(cutSVG(sh.W, sh.H, sh.paths, sh.marks, s, `${o.id} ${sh.title || 'sticker'} cut lines ${sh.size} ${sh.n}`)), 'image/svg+xml');
-    for (const [kk, sh] of shapes) { if (sh.error) continue; const code = kk.split('@')[0];
+    const seen = new Map();   // one transparent file and one proof per sticker printed; a sticker used at two sizes gets the size in its name
+    for (const kk of used) seen.set(kk.split('@')[0], (seen.get(kk.split('@')[0]) || 0) + 1);
+    for (const kk of used) { const sh = shapes.get(kk); if (!sh || sh.error) continue; const c0 = kk.split('@')[0], code = seen.get(c0) > 1 ? `${c0}-${Math.round(+kk.split('@')[1])}mm` : c0;
       add(`12-TRANSPARENT-ARTWORK/${safe(code)}.png`, await sharp(sh.buf).ensureAlpha().resize(px(sh.art.w, s.dpi), px(sh.art.h, s.dpi), { fit: 'fill' }).png().withMetadata({ density: s.dpi }).toBuffer(), 'image/png');
       const PW = Math.max(px(sh.w, 150), px(sh.art.x, 150) + px(sh.art.w, 150)) + 2, PH = Math.max(px(sh.h, 150), px(sh.art.y, 150) + px(sh.art.h, 150)) + 2;   // rounding never crops the art
       const proof = await sharp({ create: { width: PW, height: PH, channels: 4, background: '#ffffff' } }).composite([{ input: await sharp(sh.buf).resize(px(sh.art.w, 150), px(sh.art.h, 150), { fit: 'fill' }).png().toBuffer(), left: px(sh.art.x, 150), top: px(sh.art.y, 150) },
