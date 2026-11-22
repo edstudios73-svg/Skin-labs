@@ -4,6 +4,10 @@
 //   Printing Administrator = printer login: everything above + downloads + moves the job through production.
 import { json, role, adminName, findOrder, saveOrder, allOrders, saveDoc, loadDoc, loadDocs, limited } from './_lib.js';
 import { templateFor, catalogue, checkTemplate } from './templates.js';
+import { baseOf, SITE } from './_lib.js';
+import { signPrivate } from './_blob.js';
+import { waitUntil } from '@vercel/functions';
+export const config = { maxDuration: 300 };
 
 export const STAGES = ['new', 'generating', 'files-ready', 'downloaded', 'printing', 'cutting', 'qc', 'completed', 'dispatch'];
 export const STAGE_NAME = { new: 'New order', generating: 'Files generating', 'files-ready': 'Files ready', downloaded: 'Downloaded', printing: 'Printing', cutting: 'Cutting', qc: 'Quality check', completed: 'Completed', dispatch: 'Ready for collection / dispatch', failed: 'Generation failed' };
@@ -57,6 +61,46 @@ const forGeneral = j => ({ ...j, files: (j.files || []).map(({ path, url, ...f }
 const summary = (j, o) => ({ id: j.id, at: j.at, stage: j.stage, failed: !!j.failed, laptop: j.laptop, surfaces: j.surfaces, items: j.items.length, files: (j.files || []).length,
   warnings: (j.warnings || []).length, name: o ? String(o.name || '').split(' ')[0] : '', updated: (j.log || []).slice(-1)[0] || null, pic: o && o.design && (o.design.mock || o.design.sheet) || o && o.picks && o.picks.sheet || '' });
 
+// ---------- file generation (runs in the background after payment, or when the Printing Administrator asks) ----------
+let SHOP = null;
+async function shopData(base) {   // the shop's own sticker data (data.<hash>.js) + packs added in the admin
+  if (SHOP && Date.now() - SHOP.at < 10 * 60e3) return SHOP;
+  const html = await (await fetch(base + '/')).text(), f = (html.match(/src="\/?(data\.[0-9a-f]{8}\.js)"/) || [])[1]; if (!f) throw new Error('shop data not found');
+  const D = JSON.parse((await (await fetch(`${base}/${f}`)).text()).replace(/^window\.SL=/, '').replace(/;\s*$/, ''));
+  const drops = await fetch(base + '/api/catalog/').then(r => r.ok ? r.json() : { packs: [] }).catch(() => ({ packs: [] }));
+  const PK = Object.fromEntries(D.packs.map(p => [p.id, p])), URL_ = {};
+  for (const d of drops.packs || []) { PK[d.id] = { id: d.id, name: d.name, size: 'A4', items: d.items.map(i => [i.code]), a5: d.items.slice(0, 14).map(i => i.code) }; for (const i of d.items) URL_[i.code] = i.url; }
+  return SHOP = { at: Date.now(), PK, URL_ };
+}
+export async function generate(base, id, by = 'System') {
+  const { produce, storePackage } = await import('./_produce.js');
+  const f = await findOrder(id); if (!f || !f.order.paid) throw new Error('No paid order');
+  const o = f.order, job = await ensureJob(o);
+  if (job.stage === 'generating' && job.gen && Date.now() - job.gen.started < 5 * 60e3) return job;   // already running: never two at once
+  job.stage = 'generating'; job.failed = false; job.gen = { started: Date.now(), by }; job.log.push({ at: Date.now(), by, stage: 'generating' }); await saveDoc(`production/${id}`, job);
+  try {
+    const fakeReq = { headers: { host: new URL(base).host }, __base: base }, shop = await shopData(base), plan = await surfacePlan(fakeReq, job);
+    if (job.laptop) plan.template = (await templateFor(fakeReq, job.laptop)).template || plan.template;   // the full template, for drawing
+    const abs = u => /^https?:/.test(u) ? u : base + u, cache = new Map();
+    const assets = { pack: k => shop.PK[k], skinSrc: k => `/print/skins/${encodeURIComponent(k)}.jpg`,
+      stickerSrc: c => /^XQV-/.test(c) ? `/free/${c}.webp` : shop.URL_[c] || `/hd/${encodeURIComponent(c)}.avif`,
+      fetch: async u => { u = abs(u); if (cache.has(u)) return cache.get(u); const r = await fetch(u, { signal: AbortSignal.timeout(60000) }); if (!r.ok) throw new Error(`${r.status} ${u.split('/').pop()}`); const b = Buffer.from(await r.arrayBuffer()); cache.set(u, b); return b; } };
+    const pk = await produce({ order: o, job, plan, base, assets, settings: (await loadDoc('production-settings')) || {} });
+    const version = (job.version || 0) + 1;
+    job.version = version; job.files = await storePackage(id, version, pk); job.checks = pk.checks; job.warnings = pk.warnings;
+    const err = pk.checks.filter(c => c.level === 'error');
+    job.failed = err.length > 0; job.blocked = pk.partial ? 'needs-verification' : '';
+    job.stage = !job.failed && !pk.partial ? 'files-ready' : 'new';
+    job.gen = { ...job.gen, finished: Date.now(), ms: pk.ms, version, error: err.map(e => e.msg).join('; ').slice(0, 500) };
+    job.log.push({ at: Date.now(), by: 'System', stage: job.failed ? 'failed' : job.stage, note: job.failed ? `Generation failed: ${job.gen.error}` : pk.partial ? `Files v${version} made for the verified parts only. ${pk.warnings.length} surface(s) need manual verification` : `Files v${version} ready · ${job.files.length} files · ${(pk.ms / 1000).toFixed(1)} s` });
+  } catch (e) {
+    job.failed = true; job.stage = 'new'; job.gen = { ...job.gen, finished: Date.now(), error: String(e.message || e).slice(0, 500), at: String(e.stack || '').split('\n').slice(1, 3).join(' | ').slice(0, 300) };
+    job.log.push({ at: Date.now(), by: 'System', stage: 'failed', note: `Generation failed: ${job.gen.error}` });
+  }
+  await saveDoc(`production/${id}`, job); return job;
+}
+export const kickGenerate = (base, id) => { const p = generate(base, id, 'System').catch(() => null); try { waitUntil(p); } catch (e) {} return p; };
+
 export default async function handler(req, res) {
   const who = role(req);
   if (!who) return limited(req, 'login-fail', 8, 15 * 60e3) ? json(res, 429, { error: 'Too many wrong passwords. Wait 15 minutes' }) : json(res, 401, { error: 'Wrong password' });
@@ -91,9 +135,19 @@ export default async function handler(req, res) {
     return json(res, 200, { job });
   }
   if (b.a === 'note') { job.log.push({ at: Date.now(), by, stage: job.stage, note: String(b.note || '').slice(0, 500) }); await saveDoc(`production/${id}`, job); return json(res, 200, { job: isPrinter ? job : forGeneral(job) }); }
-  if (b.a === 'download') {   // file links are only ever handed to the Printing Administrator
+  if (b.a === 'download') {   // file links are only ever handed to the Printing Administrator: short-lived, signed, private
     if (!isPrinter) return json(res, 403, { error: 'Production files are downloaded by the Printing Administrator only' });
-    return json(res, 409, { error: 'No production files yet' });   // filled in when generation lands
+    const want = String(b.name || ''), fl = (job.files || []).find(x => want ? x.name === want : x.zip); if (!fl) return json(res, 404, { error: (job.files || []).length ? 'That file is not in this package' : 'No production files yet. Generate them first' });
+    const fname = fl.zip ? fl.name : `${id}-${fl.name.split('/').pop()}`, url = await signPrivate(fl.path, 900, fname);
+    (job.downloads ||= []).push({ at: Date.now(), by, name: fl.name }); job.downloads = job.downloads.slice(-100);
+    if (fl.zip && job.stage === 'files-ready') { job.stage = 'downloaded'; job.log.push({ at: Date.now(), by, stage: 'downloaded', note: 'Complete package downloaded' }); }
+    await saveDoc(`production/${id}`, job);
+    return json(res, 200, { url, name: fname, bytes: fl.bytes, sha256: fl.sha256, type: fl.type });
+  }
+  if (b.a === 'generate') {
+    if (!isPrinter) return json(res, 403, { error: 'The Printing Administrator generates production files' });
+    if (job.stage === 'generating' && job.gen && Date.now() - job.gen.started < 5 * 60e3) return json(res, 409, { error: 'Files are already being generated' });
+    const done = await generate(baseOf(req), id, by); return json(res, 200, { job: done });
   }
   return json(res, 400, { error: 'Unknown request' });
 }

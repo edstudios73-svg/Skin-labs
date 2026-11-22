@@ -140,13 +140,23 @@ async function job(id) {
           : `<tr><td>${SURF[s]}</td><td>—</td><td>—</td><td style="color:var(--warn)">Needs manual verification<br><small style="color:var(--mute)">${esc(x.why || '')}</small></td></tr>`; }).join('')}</table>
         ${Object.values(d.plan.surfaces).some(x => !x.ready) ? '<div class="note">No automatic cutting file is made for a surface without a verified template. Measure the laptop and verify its template first.</div>' : ''}` : '<p class="sub" style="margin:0">Stickers only: sheet sizes come from the products.</p>'}</section>
     </div><div>
-      <section class="card"><h2>Production files</h2>${(j.files || []).length ? `<ul class="files">${j.files.map(f => `<li><span>${esc(f.name)}<br><span class="lbl">${esc(f.type || '')}${f.bytes ? ' · ' + (f.bytes / 1e6).toFixed(1) + ' MB' : ''}</span></span>${P ? `<button class="lnk" data-dl="${esc(f.name)}">Download</button>` : ''}</li>`).join('')}</ul>` : '<p class="sub" style="margin:0 0 12px">Not generated yet.</p>'}
-        ${P ? `<div class="dl"><button class="btn w" disabled>Download complete package</button>${['General order PNG', 'Transparent artwork', 'Sticker cutlines', 'Laptop skin cutlines', 'Keyboard cutlines', 'Production instructions'].map(n => `<button class="btn" disabled>${n}</button>`).join('')}</div>`
-          : `<div class="lock">Production files are downloaded by the Printing Administrator. You can follow their status here.</div>`}</section>
+      <section class="card"><h2>Production files</h2>
+        ${j.gen && j.stage === 'generating' ? `<div class="note">Generating files… started ${when(j.gen.started)}</div>` : ''}
+        ${j.failed ? `<div class="note" style="border-color:var(--bad)">Generation failed: ${esc((j.gen && j.gen.error) || 'unknown error')}. Fix the problem, then generate again.</div>` : ''}
+        ${j.blocked === 'needs-verification' ? `<div class="note">Files were made only for the parts that have a verified template. ${(j.warnings || []).map(esc).join(' ')}</div>` : ''}
+        ${(j.files || []).length ? `<p class="lbl" style="margin-bottom:8px">Package v${j.version || 1} · ${j.files.length - 1} files · ${(j.files[0].bytes / 1e6).toFixed(1)} MB ZIP${j.gen && j.gen.finished ? ' · made ' + when(j.gen.finished) : ''}</p>` : '<p class="sub" style="margin:0 0 12px">Not generated yet.</p>'}
+        ${P ? `<div class="dl"><button class="btn w" data-dl="" ${(j.files || []).length ? '' : 'disabled'}>↓ Download complete package (ZIP)</button>${DLS.map(([n, re]) => { const f = (j.files || []).find(x => re.test(x.name)); return `<button class="btn" ${f ? `data-dl="${esc(f.name)}"` : 'disabled'}>${n}</button>`; }).join('')}</div>
+          <button class="btn" id="gen" style="margin-top:8px" ${j.stage === 'generating' ? 'disabled' : ''}>${(j.files || []).length || j.failed ? '↻ Regenerate files' : 'Generate files'}</button><p class="lbl" id="dlm" role="status" style="margin-top:8px"></p>`
+          : `<div class="lock">Production files are downloaded by the Printing Administrator. You can follow their status here.</div>`}
+        ${(j.files || []).length ? `<details style="margin-top:12px"><summary class="lbl">All files in the package</summary><ul class="files">${j.files.slice(1).map(f => `<li><span>${esc(f.name)}<br><span class="lbl">${(f.bytes / 1e6).toFixed(2)} MB${f.note ? ' · ' + esc(f.note) : ''}</span></span>${P ? `<button class="lnk" data-dl="${esc(f.name)}">Download</button>` : ''}</li>`).join('')}</ul></details>` : ''}
+        ${(j.checks || []).length ? `<details style="margin-top:12px" ${j.checks.some(c => c.level !== 'ok') ? 'open' : ''}><summary class="lbl">Validation · ${j.checks.filter(c => c.level === 'ok').length}/${j.checks.length} passed</summary><ul class="chk2">${j.checks.map(c => `<li class="${c.level === 'error' ? 'e' : c.level === 'warn' ? 'w' : ''}" style="${c.level === 'ok' ? 'color:var(--ok)' : ''}">${esc(c.check)}${c.msg ? ' · ' + esc(c.msg) : ''}</li>`).join('')}</ul></details>` : ''}
+      </section>
       <section class="card"><h2>Production status</h2><ol class="steps">${d.stages.map((s, i) => `<li class="${i < at ? 'done' : i === at ? 'cur' : ''}"><i></i><span>${esc(d.names[s])}</span>${P && i > at && !['generating', 'files-ready'].includes(s) ? `<button data-st="${s}">Mark</button>` : ''}</li>`).join('')}</ol>
         ${P ? `<textarea id="nt" rows="2" placeholder="Note for the team (optional)" style="margin-top:12px"></textarea>` : ''}</section>
       <section class="card"><h2>Activity</h2><ul class="log">${[...j.log].reverse().map(l => `<li><span><b>${esc(d.names[l.stage] || l.stage)}</b>${l.note ? ' · ' + esc(l.note) : ''}</span><small>${esc(l.by)} · ${when(l.at)}</small></li>`).join('')}</ul></section>
     </div></div>`;
+  document.querySelectorAll('[data-dl]').forEach(b => b.onclick = () => download(id, b.dataset.dl, b));
+  if ($('#gen')) $('#gen').onclick = async () => { const b = $('#gen'); b.disabled = true; b.textContent = 'Generating… this can take a minute'; try { await api('', { a: 'generate', id }); toast('Files generated'); } catch (e) { toast(e.message); } job(id); };
   document.querySelectorAll('[data-st]').forEach(b => b.onclick = async () => { b.disabled = true; try { await api('', { a: 'stage', id, stage: b.dataset.st, note: ($('#nt') || {}).value || '' }); toast(`${id} · ${d.names[b.dataset.st]}`); job(id); } catch (e) { b.disabled = false; toast(e.message); } });
 }
 
@@ -241,6 +251,26 @@ async function tpl(key) {
   const post = async body => { const r = await fetch('/api/templates/', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-key': KEY(), 'x-admin-name': ME() }, body: JSON.stringify(body) }), j = await r.json();
     if (!r.ok) { toast(j.error); if (j.check) $('#ck').innerHTML = chk(j.check); return null; } return j; };
   draw();
+}
+// reliable downloads: a fresh signed link each time, streamed with progress, size + SHA-256 checked, up to 3 tries
+const DLS = [['General order PNG', /^01-/], ['Transparent artwork', /^12-/], ['Sticker cutlines (PDF)', /^04-/], ['Laptop skin cutlines (PDF)', /^07-/], ['Keyboard cutlines (PDF)', /^10-/], ['Production instructions', /^14-/]];
+async function download(id, name, btn) {
+  const m = $('#dlm'), label = btn.textContent; btn.disabled = true;
+  for (let tryN = 1; tryN <= 3; tryN++) {
+    try {
+      const d = await api('', { a: 'download', id, name }); m.textContent = `Downloading ${d.name}…`;
+      const r = await fetch(d.url); if (!r.ok) throw new Error('storage answered ' + r.status);
+      const reader = r.body.getReader(), parts = []; let got = 0;
+      for (;;) { const { done, value } = await reader.read(); if (done) break; parts.push(value); got += value.length; m.textContent = `Downloading ${d.name} · ${Math.round(got / d.bytes * 100)}% of ${(d.bytes / 1e6).toFixed(1)} MB`; }
+      const blob = new Blob(parts, { type: d.type }); if (blob.size !== d.bytes) throw new Error(`incomplete (${blob.size} of ${d.bytes} bytes)`);
+      const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', await blob.arrayBuffer()))].map(x => x.toString(16).padStart(2, '0')).join('');
+      if (hash !== d.sha256) throw new Error('the file arrived damaged');
+      const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: d.name }); document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+      m.innerHTML = `✓ ${esc(d.name)} saved and checked. Not in your Downloads? <a href="${esc(d.url)}" target="_blank" rel="noopener">Open the file</a> (link works for 15 minutes).`;
+      btn.disabled = false; btn.textContent = label; if (!name) setTimeout(() => job(id), 800); return;
+    } catch (e) { if (e.message === 'login') return; m.textContent = `Try ${tryN} of 3 failed: ${e.message}${tryN < 3 ? '. Retrying…' : ''}`; await new Promise(r => setTimeout(r, 1200 * tryN)); }
+  }
+  btn.disabled = false; btn.textContent = label; m.textContent += ' Check your connection and try again.';
 }
 boot();
 </script></body></html>

@@ -183,7 +183,7 @@ async function paidCheckout(reference, tx) {
     history: [{ s: 'checkout', at: ck.at, by: 'Customer' }, { s: 'paid', at: now, by: 'Paystack' }, { s: 'confirmed', at: now, by: 'Paystack' }] };
   await saveOrder(c.dir.replace(/^checkouts\//, 'orders/'), o);
   ck.status = 'paid'; ck.orderAt = now; await saveCheckout(c.dir, ck);
-  await import('./production.js').then(m => m.ensureJob(o)).catch(() => null);   // the production job starts the moment payment is verified
+  await import('./production.js').then(m => m.ensureJob(o).then(() => m.kickGenerate(SITE, o.id))).catch(() => null);   // the production job (and its files) start the moment payment is verified
   const job = [...(o.packs || []).map(p => `${p.q}× ${p.label}`), (o.singles || []).length ? `${o.singles.reduce((a, x) => a + x.q, 0)} singles` : '', o.design ? `custom ${o.design.size || ''} pack` : '', (o.design && (o.design.art || []).length) ? 'own artwork' : ''].filter(Boolean).join(' · ');
   await pushAll({ title: `💰 New paid order ${o.id} · GH₵${rec.amount}`, body: `${o.name}${o.loc ? ' · ' + o.loc : ''} · ${rec.channel === 'mobile_money' ? 'MoMo' : rec.channel || ''}\n${job.slice(0, 120)}`, url: `/admin/#${o.id}`, tag: o.id + '-paid',
     image: (o.design && (o.design.sheet || o.design.mock)) || (o.picks && o.picks.sheet) || undefined,

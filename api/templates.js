@@ -10,7 +10,7 @@ export const SURFACES = ['lid', 'kb', 'pad', 'bot'];
 let CAT = null, CATAT = 0;
 export async function catalogue(req) {   // the shop's laptop list, read from the site itself (one source of truth)
   if (CAT && Date.now() - CATAT < 10 * 60e3) return CAT;
-  const r = await fetch(`${baseOf(req)}/laptops3d.json`, { signal: AbortSignal.timeout(10000) }); if (!r.ok) throw new Error('Laptop catalogue unavailable');
+  const r = await fetch(`${req.__base || baseOf(req)}/laptops3d.json`, { signal: AbortSignal.timeout(10000) }); if (!r.ok) throw new Error('Laptop catalogue unavailable');
   const j = await r.json(); CAT = j.l.map((l, i) => ({ key: lapKey(l[0], l[1]), i, brand: l[0], name: l[1], scr: l[2], w: l[3], d: l[4], t: l[5] })); CATAT = Date.now(); return CAT;
 }
 export async function templateFor(req, laptopName) {   // by the model name stored on an order ("HP Victus 16 d")

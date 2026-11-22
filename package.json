@@ -3,5 +3,11 @@
   "private": true,
   "type": "module",
   "description": "Skin Lab shop: static site + order backend (Vercel Functions, Supabase Storage)",
-  "dependencies": { "web-push": "3.6.7" }
+  "dependencies": {
+    "@vercel/functions": "^2.2.13",
+    "fflate": "^0.8.3",
+    "pdf-lib": "^1.17.1",
+    "sharp": "^0.34.5",
+    "web-push": "3.6.7"
+  }
 }

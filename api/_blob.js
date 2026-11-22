@@ -88,3 +88,27 @@ export async function del(input) {
     if (!r.ok) throw new Error(`storage del failed ${r.status}: ${await r.text()}`);
   }
 }
+
+// ---------- private production files (bucket "production", never public) ----------
+// Customer production files are only reachable through short-lived signed links handed to the Printing Administrator.
+const PRIV = 'production';
+let privReady = null;
+const ensurePrivate = () => privReady ||= fetch(`${cfg().url}/storage/v1/bucket`, { method: 'POST', headers: hdrs({ 'Content-Type': 'application/json' }), body: JSON.stringify({ id: PRIV, name: PRIV, public: false }), signal: AbortSignal.timeout(15000) })
+  .then(r => r.ok || r.status === 409 || r.status === 400 ? true : r.text().then(t => { privReady = null; throw new Error(`could not create the private bucket: ${r.status} ${t}`); }));
+const encPath = p => p.split('/').map(encodeURIComponent).join('/');
+export async function putPrivate(path, body, contentType = 'application/octet-stream') {
+  await ensurePrivate();
+  const r = await fetch(`${cfg().url}/storage/v1/object/${PRIV}/${encPath(path)}?upsert=true`, { method: 'PUT', headers: hdrs({ 'Content-Type': contentType, 'x-upsert': 'true' }), body, signal: AbortSignal.timeout(120000) });
+  if (!r.ok) throw new Error(`private put failed ${r.status}: ${await r.text()}`);
+  return path;
+}
+export async function getPrivate(path) {
+  const r = await fetch(`${cfg().url}/storage/v1/object/${PRIV}/${encPath(path)}`, { headers: hdrs(), signal: AbortSignal.timeout(120000) });
+  if (!r.ok) throw new Error(`private get failed ${r.status}`); return Buffer.from(await r.arrayBuffer());
+}
+export async function signPrivate(path, seconds = 600, downloadName = '') {
+  const r = await fetch(`${cfg().url}/storage/v1/object/sign/${PRIV}/${encPath(path)}`, { method: 'POST', headers: hdrs({ 'Content-Type': 'application/json' }), body: JSON.stringify({ expiresIn: seconds }), signal: AbortSignal.timeout(15000) });
+  if (!r.ok) throw new Error(`sign failed ${r.status}: ${await r.text()}`);
+  const j = await r.json(), u = `${cfg().url}/storage/v1${j.signedURL || j.signedUrl}`;
+  return downloadName ? `${u}${u.includes('?') ? '&' : '?'}download=${encodeURIComponent(downloadName)}` : u;
+}
