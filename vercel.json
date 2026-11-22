@@ -3,6 +3,15 @@
  "trailingSlash": true,
  "headers": [
   {
+   "source": "/(laptops-r|laptops-photo)/(.*)",
+   "headers": [
+    {
+     "key": "Cache-Control",
+     "value": "public, max-age=86400"
+    }
+   ]
+  },
+  {
    "source": "/print/(singles|packs|skins)/(.*)",
    "headers": [
     {
