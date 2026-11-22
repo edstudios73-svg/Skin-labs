@@ -480,7 +480,7 @@ function vHome() {
       <div class="h3-copy"><span class="lbl">Skin Lab · by Baiden Creatives</span>
         <h1>Your Laptop. <em>Your Story.</em></h1>
         <p>Discover unique laptop skins and stickers. Shop your favourites or create something completely your own.</p>
-        <div class="h3-btns"><a class="b3 b3-w" href="#explore">Explore Designs</a><a class="b3 b3-o" href="/design/">Create Your Own</a></div>
+        <div class="h3-btns"><a class="b3 b3-w" href="#explore">Explore Designs</a><a class="b3 b3-o" href="/design/?upload=1">Create Your Own</a></div>
         <ul class="h3-facts"><li>Skins from ${CUR}${SKINP.S.price}</li><li>Stickers from ${CUR}${PRICE}</li><li>Printed in Accra</li></ul></div>
       <a class="h3-art" href="#explore" aria-label="Explore designs">${hero.map((s, i) => `<span class="lid lid${i}"><img src="skins/${s[0]}-s.${IX}" alt="${esc(s[1])} laptop skin" fetchpriority="high"><i class="cam"></i></span>`).join('')}
         <span class="h3-cap"><b>${esc(hero[0] ? hero[0][1] : '')}</b> laptop skin</span></a>

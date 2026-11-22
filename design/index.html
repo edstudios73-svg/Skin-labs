@@ -172,7 +172,26 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 .cmpb{position:absolute;right:14px;bottom:14px;z-index:4;background:#000;color:#fff;font:500 10.5px var(--mono);letter-spacing:.14em;text-transform:uppercase;padding:6px 9px}
 #cmp[aria-pressed=true]{background:#fff;color:#000}
 body.cmping #pane,body.cmping #surf{opacity:.45}
-@media (max-width:999px){.steps{margin-top:0}.steps li{font-size:10px}.acts{position:sticky;bottom:calc(64px + env(safe-area-inset-bottom,0px));background:#000;padding:8px 0;z-index:5}}
+@media (max-width:999px){.steps{margin-top:0}.steps li{font-size:10px}.acts{position:sticky;bottom:calc(78px + env(safe-area-inset-bottom,0px));background:#000;padding:8px 0;z-index:5}}
+
+.drop{display:grid;gap:3px;place-items:center;text-align:center;border:1px dashed rgba(255,255,255,.35);padding:18px 12px;cursor:pointer;position:relative}
+.drop:hover,.drop.over{border-color:#fff;background:rgba(255,255,255,.04)}.drop b{font-weight:500}.drop small{color:#8c8c8c;font-size:12px}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer}.drop.busy{opacity:.6;pointer-events:none}
+.arts{display:grid;grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:6px}
+.art{position:relative;aspect-ratio:1;background:#111;border:1px solid var(--line);padding:0;overflow:hidden}.art img{width:100%;height:100%;object-fit:cover}.art.on{outline:1px solid #fff;outline-offset:2px}
+.art i{position:absolute;left:0;right:0;bottom:0;background:#fff;color:#000;font:500 8.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;font-style:normal;text-align:center;padding:2px 0}
+.crop{display:grid;gap:10px}.cropbox{position:relative;width:100%;max-height:240px;background:#111;overflow:hidden;touch-action:none}.cropbox canvas{position:absolute;inset:0;width:100%;height:100%;cursor:grab}.cropbox canvas:active{cursor:grabbing}
+.croph{position:absolute;left:8px;top:8px;background:rgba(0,0,0,.6);font:400 9.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;padding:3px 6px;pointer-events:none}
+.cropr{display:grid;gap:6px}.cropr label{display:grid;grid-template-columns:44px 1fr;align-items:center;gap:10px}.cropr input{width:100%}
+.cropb{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.cropb button{border:1px solid var(--line2);min-height:38px;font-size:12px;color:#ddd}.cropb button:hover{border-color:#fff;color:#fff}
+.q-good{color:#9be39b!important}.q-ok{color:#ddd!important}.q-low{color:#ffb4a8!important}
+.asub{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;align-items:center;font-size:12.5px;color:#bbb}
+#asub{border-bottom:1px solid #fff;color:#fff;font-size:13px;padding:2px 0}.adel{color:#888;font-size:12px;border-bottom:1px solid #444;padding:2px 0}
+.priv{font-size:12px!important}
+.subf{display:grid;gap:12px;max-width:440px;width:100%;background:#0a0a0a;border:1px solid var(--line2);padding:22px}.subf h3{margin:0;font:400 28px/1.05 var(--serif)}
+.subf .fld{display:grid;gap:4px}.subf input:not([type]),.subf input[inputmode]{background:#000;border:1px solid var(--line2);color:#fff;padding:11px 12px;font:400 15px var(--body)}
+.chk{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:#ddd}.chk input{margin-top:3px;width:18px;height:18px;accent-color:#fff}.sfb{display:grid;grid-template-columns:1fr 1.4fr;gap:8px}
+.seg#tab button{font-size:13px}
 </style>
 <script type="importmap">{"imports":{"three":"/vendor/three/three.module.min.js"}}</script>
 <link rel="modulepreload" href="/vendor/three/three.module.min.js"><link rel="modulepreload" href="/vendor/three/OrbitControls.js">
@@ -226,6 +245,7 @@ let L = null, col = '', surf = 'lid', sel = -1, lidA = 108, hist = [], skinSize 
 const PADP = 30;
 const PADPIC = new Set(['ph-gojo']);   // skins with their own trackpad artwork (skins/<id>-pad)
 const SKINP = { S: { name: 'Small', fit: 'up to 13.3″', price: 70 }, M: { name: 'Medium', fit: '14″ – 15.6″', price: 80 }, L: { name: 'Large', fit: '16″ – 17.3″', price: 90 }, C: { name: 'Custom', fit: 'full wrap or own picture', price: 120 } };
+const syncSize = () => { skinSize = ['lid', 'kb', 'bot'].some(k => String(skin[k]).startsWith('up:')) ? 'C' : skinFor(L.scr); };
 const skinFor = inch => !inch ? 'M' : inch <= 13.5 ? 'S' : inch <= 15.7 ? 'M' : 'L';
 const items = { lid: [], kb: [], bot: [] }, skin = { lid: '', kb: '', bot: '', pad: '' };
 let part = 'kb', PADR = null;   // part: on the keyboard surface, skin the keyboard area or just the trackpad
@@ -235,22 +255,92 @@ const uiSurf = () => surf === 'kb' && part === 'pad' ? 'pad' : surf;
 
 // ---------- steps + "Design on my laptop" from the shop ----------
 const steps = n => `<ol class="steps" aria-label="Design steps">${['Choose laptop', 'Design', 'Review & add to cart'].map((t, i) => `<li class="${i + 1 === n ? 'on' : i + 1 < n ? 'done' : ''}" ${i + 1 === n ? 'aria-current="step"' : ''}><span>${i + 1 < n ? '✓' : i + 1}</span>${t}</li>`).join('')}</ol>`;
-const WANT = (() => { const u = new URLSearchParams(location.search), k = ['skin', 'pack', 'sticker'].find(x => u.get(x)); return k ? { kind: k, id: u.get(k) } : null; })();
-const wantName = () => !WANT ? '' : WANT.kind === 'skin' ? `${(PHOTO.find(x => x[0] === WANT.id) || [, WANT.id.replace(/^ph-/, '').replace(/-/g, ' ')])[1]} skin` : WANT.kind === 'pack' ? (PK[WANT.id] ? PK[WANT.id].name.charAt(0) + PK[WANT.id].name.slice(1).toLowerCase() + ' stickers' : 'Sticker pack') : `Sticker ${WANT.id}`;
-const wantPic = () => !WANT ? '' : WANT.kind === 'skin' ? `<img src="/skins/${encodeURIComponent(WANT.id)}-s.${IX}" alt="">` : WANT.kind === 'pack' && PK[WANT.id] ? spr(PK[WANT.id], PK[WANT.id].items[0], 44) : CODE[WANT.id] ? spr(CODE[WANT.id].p, CODE[WANT.id].it, 44) : '';
+const WANT = (() => { const u = new URLSearchParams(location.search); if (u.get('upload')) return { kind: 'upload', id: '' }; const k = ['skin', 'pack', 'sticker'].find(x => u.get(x)); return k ? { kind: k, id: u.get(k) } : null; })();
+const wantName = () => !WANT ? '' : WANT.kind === 'upload' ? 'Your own design' : WANT.kind === 'skin' ? `${(PHOTO.find(x => x[0] === WANT.id) || [, WANT.id.replace(/^ph-/, '').replace(/-/g, ' ')])[1]} skin` : WANT.kind === 'pack' ? (PK[WANT.id] ? PK[WANT.id].name.charAt(0) + PK[WANT.id].name.slice(1).toLowerCase() + ' stickers' : 'Sticker pack') : `Sticker ${WANT.id}`;
+const wantPic = () => !WANT ? '' : WANT.kind === 'upload' ? '<span style="font-size:22px">↑</span>' : WANT.kind === 'skin' ? `<img src="/skins/${encodeURIComponent(WANT.id)}-s.${IX}" alt="">` : WANT.kind === 'pack' && PK[WANT.id] ? spr(PK[WANT.id], PK[WANT.id].items[0], 44) : CODE[WANT.id] ? spr(CODE[WANT.id].p, CODE[WANT.id].it, 44) : '';
 function applyWant() { WANT.done = true; history.replaceState(null, '', location.pathname); const { kind, id } = WANT; surf = 'lid'; sel = -1;
+  if (kind === 'upload') { tab = 'art'; part = 'kb'; pane(); go('lid'); return; }
   if (kind === 'skin') { if (!/^ph-[a-z0-9-]+$/.test(id)) return toast('That design is not available'); if (!PHOTO.some(x => x[0] === id)) PHOTO.unshift([id, wantName().replace(/ skin$/, '')]);
     snap(); skin.lid = id; tab = 'skins'; pane(); go('lid'); /* the first paint (already running) picks the skin up; a second paint here would race it */ toast(`${wantName()} is on your lid`); return; }
   if (kind === 'pack') { const pk = PK[id]; if (!pk) return toast('That pack is not available'); ccat = pk.cat in CAT ? pk.cat : ccat; cpack = id; tab = 'stickers'; pane(); bomb(pk); toast(`${wantName()} added to your lid · Undo to clear`); return; }
   const c = CODE[id]; if (!c) return toast('That sticker is not available'); ccat = c.p.cat in CAT ? c.p.cat : ccat; cpack = c.p.id; tab = 'stickers'; snap();
   const o = { c: id, x: .5, y: .45, s: Math.min(.32, 7 / L.w), r: 0 }; items.lid.push(o); sel = items.lid.length - 1; pane(); refresh(); popIn([o], 'lid'); go('lid'); toast(`Sticker ${id} is on your lid · drag to move it`); }
 
+
+// ---------- "Your art": upload, crop, zoom, turn and place your own picture on any surface ----------
+let artSel = '';
+const surfOf = tg => tg === 'pad' ? 'kb' : tg;
+const surfCm = tg => tg === 'pad' && PADR && TX.kb ? [PADR[2] / TX.kb.image.width * L.w, PADR[3] / TX.kb.image.height * L.d] : [L.w, L.d];
+function artQuality(a, tg, t) { const [cw, ch] = surfCm(tg), base = t.fit === 'contain' ? Math.min(cw / a.w, ch / a.h) : Math.max(cw / a.w, ch / a.h), dpi = 2.54 / (base * t.z);
+  return dpi >= 200 ? ['good', `Print quality: sharp (${Math.round(dpi)} dpi)`] : dpi >= 120 ? ['ok', `Print quality: fine (${Math.round(dpi)} dpi)`] : ['low', `Print quality: low (${Math.round(dpi)} dpi). Zoom out or use a bigger picture.`]; }
+async function artPane(p) {
+  const tg = uiSurf(), list = (await ART.all().catch(() => [])).sort((a, b) => b.at - a.at);
+  if (tab !== 'art' || $('#pane') !== p) return;
+  const cur = String(skin[tg]).startsWith('up:') ? skin[tg].slice(3) : '', a = list.find(x => x.id === cur) || null, t = artT[tg] || (artT[tg] = T0());
+  const [cw, ch] = surfCm(tg);
+  p.innerHTML = `<label class="drop" id="drop"><input type="file" id="afile" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif"><b>${list.length ? 'Upload another picture' : 'Upload your artwork'}</b><small>Picture, logo or design · JPG, PNG or WebP · up to 25 MB</small></label>
+    ${list.length ? `<div class="arts" id="arts" aria-label="Your pictures">${list.map(x => `<button class="art ${x.id === cur ? 'on' : ''}" data-a="${x.id}" aria-label="Use ${esc(x.name)} on the ${SN4[tg].toLowerCase()}"><img src="${x.thumb}" alt="">${x.sub ? '<i>Sent</i>' : ''}</button>`).join('')}</div>` : ''}
+    ${a ? `<div class="crop"><div class="cropbox" style="aspect-ratio:${cw.toFixed(2)}/${ch.toFixed(2)}"><canvas id="cropc"></canvas><span class="croph">Drag to position</span></div>
+      <div class="cropr"><label><span class="lbl">Zoom</span><input type="range" id="az" min="20" max="400" step="1" value="${Math.round(t.z * 100)}"></label><label><span class="lbl">Turn</span><input type="range" id="ar" min="-180" max="180" step="1" value="${Math.round(t.r)}"></label></div>
+      <div class="cropb"><button type="button" id="a90">↻ 90°</button><button type="button" id="afit">${t.fit === 'cover' ? 'Show whole picture' : 'Fill the surface'}</button><button type="button" id="ac">Reset</button><button type="button" id="aoff">Take off</button></div>
+      <p class="fitn q-${artQuality(a, tg, t)[0]}" id="aq">${artQuality(a, tg, t)[1]}</p>
+      <div class="asub">${a.sub ? `<span>Sent for the catalogue (${esc(a.sub)}) · waiting for approval</span>` : `<button type="button" id="asub">Submit this design to the public catalogue</button>`}<button type="button" class="adel" id="adel">Delete from this device</button></div></div>`
+      : list.length ? `<p class="fitn">Tap a picture to put it on the ${SN4[tg].toLowerCase()}.</p>` : ''}
+    <p class="fitn priv">Private: your pictures stay on this device. We only receive one when you order it or submit it for the catalogue.</p>`;
+  const repaint = () => paintQ(surfOf(tg));
+  const use = id => { snap(); skin[tg] = 'up:' + id; artT[tg] = T0(); syncSize(); repaint(); go(surfOf(tg)); pane(); };
+  $('#afile').onchange = async e => { const f = e.target.files[0]; if (!f) return; $('#drop').classList.add('busy'); $('#drop b').textContent = 'Preparing your picture…';
+    try { const x = await addArt(f); use(x.id); toast(`On your ${SN4[tg].toLowerCase()} · drag to position`); } catch (err) { toast(err.message); pane(); } };
+  const dz = $('#drop'); ['dragover', 'dragenter'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('over'); })); dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+  dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('over'); const f = e.dataTransfer.files[0]; if (f) { const dt = new DataTransfer(); dt.items.add(f); $('#afile').files = dt.files; $('#afile').onchange({ target: $('#afile') }); } });
+  if ($('#arts')) $('#arts').onclick = e => { const b = e.target.closest('[data-a]'); if (b && b.dataset.a !== cur) use(b.dataset.a); };
+  if (!a) return;
+  const cv = $('#cropc'), box = cv.parentElement, im = await artBmp(a.id); if (!im) return toast('That picture is missing on this device');
+  const draw = () => { if (!cv.isConnected || !$('#aq')) return; const W = box.clientWidth, H = box.clientHeight, d = devicePixelRatio || 1; cv.width = W * d; cv.height = H * d; const g = cv.getContext('2d'); g.scale(d, d);
+    g.fillStyle = '#1b1b1d'; g.fillRect(0, 0, W, H); drawArt(g, im, W, H, t);
+    if (tg === 'kb') { g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(W * .07, H * .06, W * .86, H * .5); }   // where the keys sit
+    g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 1; g.strokeRect(.5, .5, W - 1, H - 1);
+    const q = artQuality(a, tg, t); $('#aq').textContent = q[1]; $('#aq').className = 'fitn q-' + q[0]; };
+  draw(); new ResizeObserver(draw).observe(box);
+  let dr = null; cv.onpointerdown = e => { snap(); dr = { x: e.clientX, y: e.clientY, tx: t.x, ty: t.y }; cv.setPointerCapture(e.pointerId); };
+  cv.onpointermove = e => { if (!dr) return; t.x = dr.tx + (e.clientX - dr.x) / box.clientWidth; t.y = dr.ty + (e.clientY - dr.y) / box.clientHeight; draw(); repaint(); };
+  cv.onpointerup = cv.onpointercancel = () => { dr = null; save3(); };
+  $('#az').onpointerdown = $('#ar').onpointerdown = () => snap();
+  $('#az').oninput = e => { t.z = e.target.value / 100; draw(); repaint(); }; $('#ar').oninput = e => { t.r = +e.target.value; draw(); repaint(); };
+  $('#az').onchange = $('#ar').onchange = () => save3();
+  $('#a90').onclick = () => { snap(); t.r = ((t.r + 90 + 180) % 360) - 180; $('#ar').value = t.r; draw(); repaint(); save3(); };
+  $('#afit').onclick = () => { snap(); t.fit = t.fit === 'cover' ? 'contain' : 'cover'; t.z = 1; t.x = t.y = 0; repaint(); save3(); pane(); };
+  $('#ac').onclick = () => { snap(); Object.assign(t, T0()); repaint(); save3(); pane(); };
+  $('#aoff').onclick = () => { snap(); skin[tg] = ''; syncSize(); repaint(); save3(); pane(); };
+  $('#adel').onclick = async () => { if (!confirm('Delete this picture from this device? Designs using it will lose it.')) return;
+    for (const k in skin) if (skin[k] === 'up:' + a.id) { skin[k] = ''; paintQ(surfOf(k)); } syncSize(); await ART.del(a.id); delete ARTB[a.id]; save3(); pane(); toast('Picture deleted'); };
+  if ($('#asub')) $('#asub').onclick = () => submitArt(a);
+}
+function submitArt(a) {   // a short form; nothing is published until the shop approves it
+  const m = document.createElement('div'); m.className = 'pk'; m.innerHTML = `<div class="pkin subf" role="dialog" aria-label="Submit to the catalogue"><h3>Submit to the public catalogue</h3>
+    <p class="fitn">We review every design first. If it is approved, other customers can buy it. It is not published automatically.</p>
+    <label class="fld"><span class="lbl">Design name</span><input id="sf-t" maxlength="80" value="${esc(a.name)}"></label>
+    <label class="fld"><span class="lbl">Your name (for credit)</span><input id="sf-n" maxlength="60" placeholder="e.g. Ama"></label>
+    <label class="fld"><span class="lbl">WhatsApp (optional, so we can reach you)</span><input id="sf-c" maxlength="40" inputmode="tel"></label>
+    <label class="chk"><input type="checkbox" id="sf-r"> I made this artwork or have permission to sell it.</label>
+    <div class="sfb"><button type="button" class="btn" id="sf-x">Cancel</button><button type="button" class="btn y" id="sf-go">Submit for approval</button></div></div>`;
+  document.body.appendChild(m); const close = () => m.remove(); $('#sf-x').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+  $('#sf-go').onclick = async () => { if (!$('#sf-r').checked) return toast('Please confirm you can use this artwork');
+    const go = $('#sf-go'); go.disabled = true; go.textContent = 'Sending…';
+    try { const bm = await artBmp(a.id), k = Math.min(1, 2400 / Math.max(bm.width, bm.height)), c = document.createElement('canvas'); c.width = Math.round(bm.width * k); c.height = Math.round(bm.height * k); c.getContext('2d').drawImage(bm, 0, 0, c.width, c.height);
+      let img = c.toDataURL(a.alpha ? 'image/png' : 'image/jpeg', .9); if (img.length > 4.2e6) img = c.toDataURL('image/jpeg', .88);
+      const r = await fetch('/api/submit/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ img, w: c.width, h: c.height, rights: true, title: $('#sf-t').value, name: $('#sf-n').value, contact: $('#sf-c').value }) });
+      const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'Could not send it, try again');
+      a.sub = j.id; await ART.put(a); close(); toast('Sent for approval. Thank you!'); pane();
+    } catch (e) { go.disabled = false; go.textContent = 'Submit for approval'; toast(e.message); } };
+}
+
 // ---------- step 1: find your laptop ----------
 let q = '', fTag = '', fBrand = '', shown = 40;
 const TAGS = [['', 'All'], ['s', 'Student'], ['p', 'Programmer'], ['g', 'Gamer'], ['c', 'Creator']];
 const BRANDS = [...new Set(LAPS.map(l => l.brand))];
 function vPick() {
-  app.innerHTML = `${steps(1)}${WANT ? `<div class="want"><span class="wimg">${wantPic()}</span><span><b>${esc(wantName())}</b><small>Pick your laptop and we'll put it on straight away.</small></span></div>` : ''}
+  app.innerHTML = `${steps(1)}${WANT ? `<div class="want"><span class="wimg">${wantPic()}</span><span><b>${esc(wantName())}</b><small>${WANT.kind === 'upload' ? 'Pick your laptop first, so your picture is cut to its exact size.' : `Pick your laptop and we'll put it on straight away.`}</small></span></div>` : ''}
     <h1>Find your <em>laptop.</em></h1><p class="psub">${LAPS.length} models with their real size, so your design fits.</p>
     <label class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="q" placeholder="Search: ThinkPad T14, MacBook Air, Victus…" value="${esc(q)}" autocomplete="off"></label>
     <div class="hs" id="ft">${TAGS.map(([k, n]) => `<button class="chip ${k === fTag ? 'on' : ''}" data-t="${k}">${n}</button>`).join('')}</div>
@@ -280,8 +370,9 @@ const MAXA = () => (R && R.capabilities.getMaxAnisotropy()) || 8;
 const imgCache = {};
 const img = src => imgCache[src] || (imgCache[src] = new Promise(ok => { const i = new Image(); if (/^https?:/.test(src)) i.crossOrigin = 'anonymous'; i.onload = () => ok(i); i.onerror = () => ok(null); i.src = src; }));
 function rr(g, x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
-async function paintSkin(g, id, W, H) {
+async function paintSkin(g, id, W, H, where) {
   if (!id) return;
+  if (id.startsWith('up:')) { const im = await artBmp(id.slice(3)); if (im) drawArt(g, im, W, H, artT[where || 'lid']); return; }
   if (!id.startsWith('s-') && !id.startsWith('ph-')) return;
   if (id.startsWith('s-')) { g.fillStyle = SOLID.find(s => s[0] === id)[2]; g.fillRect(0, 0, W, H); return; }
   const im = await skinImg(id); if (!im) return; const k = Math.max(W / im.width, H / im.height); g.drawImage(im, (W - im.width * k) / 2, (H - im.height * k) / 2, im.width * k, im.height * k);
@@ -290,6 +381,29 @@ const SKC = {};
 const skinImg = id => SKC[id] || (SKC[id] = (async () => { const u = `/skins/${id}.${IX}`;
   try { if (window.createImageBitmap) { const r = await fetch(u); if (r.ok) return await createImageBitmap(await r.blob(), { resizeWidth: TW, resizeQuality: 'high' }); } } catch (e) {}
   const i = await img(u); try { if (i && i.decode) await i.decode(); } catch (e) {} return i; })());
+// ---------- your own artwork: kept on this device only (IndexedDB), never uploaded unless the customer sends it ----------
+const ART = (() => { let p; const db = () => p ||= new Promise((ok, no) => { const r = indexedDB.open('sl-art', 1); r.onupgradeneeded = () => r.result.createObjectStore('art', { keyPath: 'id' }); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); });
+  const tx = async (m, f) => { const d = await db(); return new Promise((ok, no) => { const t = d.transaction('art', m), r = f(t.objectStore('art')); t.oncomplete = () => ok(r && r.result); t.onerror = () => no(t.error); }); };
+  return { all: () => tx('readonly', st => st.getAll()), get: id => tx('readonly', st => st.get(id)), put: v => tx('readwrite', st => st.put(v)), del: id => tx('readwrite', st => st.delete(id)) }; })();
+const ARTB = {}, artBmp = id => ARTB[id] || (ARTB[id] = ART.get(id).then(a => a ? createImageBitmap(a.blob) : null).catch(() => null));
+const artT = { lid: null, kb: null, pad: null, bot: null };   // where the picture sits on each surface: zoom, offset, turn, fit
+const T0 = () => ({ z: 1, x: 0, y: 0, r: 0, fit: 'cover' });
+function drawArt(g, im, W, H, t) { t = t || T0(); const iw = im.width, ih = im.height, base = t.fit === 'contain' ? Math.min(W / iw, H / ih) : Math.max(W / iw, H / ih), k = base * t.z;
+  g.save(); g.translate(W / 2 + t.x * W, H / 2 + t.y * H); g.rotate(t.r * Math.PI / 180); g.drawImage(im, -iw * k / 2, -ih * k / 2, iw * k, ih * k); g.restore(); }
+const ARTOK = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif', 'image/bmp'];
+async function addArt(file) {   // decode, shrink to print size (3000 px long side), keep transparency for PNG/WebP/GIF
+  if (!file) return null;
+  if (file.size > 25e6) throw new Error('That picture is over 25 MB. Try a smaller one.');
+  if (file.type && !file.type.startsWith('image/')) throw new Error('Please pick a picture (JPG, PNG or WebP).');
+  let bm; try { bm = await createImageBitmap(file); } catch (e) { throw new Error(/hei[cf]/i.test(file.type + file.name) ? 'iPhone HEIC photos cannot be read here. Share it as JPG (Settings → Camera → Most Compatible) and try again.' : 'We could not read that picture. Please use JPG, PNG or WebP.'); }
+  if (bm.width < 300 || bm.height < 300) throw new Error('That picture is too small to print sharp (at least 300 × 300 px).');
+  const k = Math.min(1, 3000 / Math.max(bm.width, bm.height)), c = document.createElement('canvas'); c.width = Math.round(bm.width * k); c.height = Math.round(bm.height * k);
+  c.getContext('2d').drawImage(bm, 0, 0, c.width, c.height);
+  const alpha = /png|webp|gif|avif/.test(file.type), blob = await new Promise(ok => c.toBlob(ok, alpha ? 'image/png' : 'image/jpeg', .92));
+  const tc = document.createElement('canvas'), tk = 200 / Math.max(c.width, c.height); tc.width = Math.round(c.width * tk); tc.height = Math.round(c.height * tk); tc.getContext('2d').drawImage(c, 0, 0, tc.width, tc.height);
+  const a = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: String(file.name || 'My picture').replace(/\.[a-z0-9]+$/i, '').slice(0, 60), blob, w: c.width, h: c.height, src: [bm.width, bm.height], at: Date.now(), thumb: tc.toDataURL('image/jpeg', .8), alpha, sub: '' };
+  await ART.put(a); ARTB[a.id] = Promise.resolve(createImageBitmap(blob)); return a;
+}
 const warmSkins = () => PHOTO.forEach(([id], k) => setTimeout(() => skinImg(id), k * 120));
 const isLight = c => ['silver', 'starlight', 'gold', 'white', 'platinum', 'pink', 'beige', 'sage', 'mercury'].includes(c);
 // sticker atlases: one decoded image per pack, kept for the whole visit
@@ -312,14 +426,16 @@ async function paintBase(s) {
   const lg = g.createLinearGradient(0, 0, W, H); lg.addColorStop(0, base); lg.addColorStop(.6, shade(base, light ? -8 : 7)); lg.addColorStop(1, base);
   g.fillStyle = lg; g.fillRect(0, 0, W, H);
   if (L.style !== 'mac' && ['budget', 'game', 'biz', 'chrome'].includes(L.style)) { g.fillStyle = grain(g, light); g.fillRect(0, 0, W, H); }
-  if (s === 'lid') { if (skin.lid) await paintSkin(g, skin.lid, W, H); else lidMark(g, W, H, light); }
-  if (s === 'bot') { await paintSkin(g, skin.bot, W, H); bottom(g, W, H, light); }
-  if (s === 'kb') { await paintSkin(g, skin.kb, W, H); keyboard(g, W, H, light);
+  if (s === 'lid') { if (skin.lid) await paintSkin(g, skin.lid, W, H, 'lid'); else lidMark(g, W, H, light); }
+  if (s === 'bot') { await paintSkin(g, skin.bot, W, H, 'bot'); bottom(g, W, H, light); }
+  if (s === 'kb') { await paintSkin(g, skin.kb, W, H, 'kb'); keyboard(g, W, H, light);
     if (skin.pad && PADR) { const [x, y, w, h] = PADR; g.save(); rr(g, x, y, w, h, W * .012); g.clip(); const c = document.createElement('canvas'); c.width = Math.ceil(w); c.height = Math.ceil(h);
-      await paintSkin(c.getContext('2d'), PADPIC.has(skin.pad) ? skin.pad + '-pad' : skin.pad, c.width, c.height); g.drawImage(c, x, y); g.restore();
+      await paintSkin(c.getContext('2d'), PADPIC.has(skin.pad) ? skin.pad + '-pad' : skin.pad, c.width, c.height, 'pad'); g.drawImage(c, x, y); g.restore();
       g.strokeStyle = light ? 'rgba(0,0,0,.22)' : 'rgba(255,255,255,.22)'; g.lineWidth = W * .0016; rr(g, x, y, w, h, W * .012); g.stroke(); } }
 }
 function paintNow(s) { if (!BASE[s]) return; const old = TX[s].image; TX[s].image = BASE[s]; BASE[s] = old; TX[s].needsUpdate = true; kick(); }   // swap canvases: no 2048 px copy
+const PQ = {};
+function paintQ(s) { const q = PQ[s] || (PQ[s] = { run: false, again: false }); if (q.run) { q.again = true; return; } q.run = true; paint(s).finally(() => { q.run = false; if (q.again) { q.again = false; paintQ(s); } }); }
 async function paint(s) { PT('paint-' + s); await paintBase(s); PT('base-' + s); paintNow(s); syncStickers(s); if (s === 'lid' && mode === 'ph') phLid(); }
 // ---- stickers as their own flat 3D pieces: moving one never repaints the laptop
 let GEO = null; const STK = { lid: [], kb: [], bot: [] }, ATX = {}, SELL = {};
@@ -643,7 +759,7 @@ function tfAct(a) { const L_ = items[surf]; if (sel < 0) return; snap(); const o
   else if (a === 'del') { L_.splice(sel, 1); sel = -1; }
   else sel = -1;
   refresh(); schedule(surf); }
-const save3 = () => { if (LL) return; try { localStorage.setItem('sl-design3', JSON.stringify({ i: L && L.i, n: L && `${L.brand} ${L.name}`, scr: L && L.scr, col, items, skin, skinSize })); } catch (e) {} };
+const save3 = () => { if (LL) return; try { localStorage.setItem('sl-design3', JSON.stringify({ i: L && L.i, n: L && `${L.brand} ${L.name}`, scr: L && L.scr, col, items, skin, skinSize, artT })); } catch (e) {} };
 const store = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} } };
 function thumb(w = 420) {   // picture of the side with the design, then the camera goes back where the customer left it
   const sv = ['lid', 'kb', 'bot'].reduce((m, k) => items[k].length + (skin[k] ? 3 : 0) > items[m].length + (skin[m] ? 3 : 0) ? k : m, 'lid');
@@ -651,9 +767,9 @@ function thumb(w = 420) {   // picture of the side with the design, then the cam
   const tf = $('#tf'); if (tf) tf.hidden = true; R.render(scene, cam); const t = thumbOf(w); cam.position.copy(p0); ctl.target.copy(t0); cam.lookAt(t0); setLid(a0); kick(); return t; }
 function thumbOf(w) { const c = document.createElement('canvas'), src = R.domElement; c.width = w; c.height = Math.round(w * src.height / src.width);
   const g = c.getContext('2d'); g.fillStyle = '#f4f4f4'; g.fillRect(0, 0, c.width, c.height); g.drawImage(src, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', .72); }
-const v3 = () => ({ v: 3, name: `${L.brand} ${L.name}`, li: L.i, col, skin: { ...skin }, skinSize: skinSize || skinFor(L.scr), items: JSON.parse(JSON.stringify(items)) });
+const v3 = () => ({ v: 3, name: `${L.brand} ${L.name}`, li: L.i, col, skin: { ...skin }, skinSize: skinSize || skinFor(L.scr), artT: JSON.parse(JSON.stringify(artT)), items: JSON.parse(JSON.stringify(items)) });
 let redo = [];
-const snap = () => { hist.push(JSON.stringify({ items, skin })); if (hist.length > 60) hist.shift(); redo = []; };
+const snap = () => { hist.push(JSON.stringify({ items, skin, artT })); if (hist.length > 60) hist.shift(); redo = []; };
 
 // one laptop look everywhere: our own 3D model (the photo view was removed to keep the designer fast)
 const mode = '3d', realSet = () => null, phLayout = () => {}, phLid = () => {};
@@ -662,7 +778,7 @@ const mode = '3d', realSet = () => null, phLayout = () => {}, phLid = () => {};
 const C0 = CAT.free || D.cats.find(c => !['xl', 'mix'].includes(c.id)) || D.cats[0];   // open on a full category, not the one-sticker lid centrepieces
 let tab = 'skins', ccat = C0.id, cpack = C0.packs[0];
 async function vEditor() {
-  if (skinSize !== 'C') skinSize = skinFor(L.scr);
+  syncSize();
   if (!THREE) { app.innerHTML = `<div class="stage" id="stage"><div class="load">Building your ${esc(L.brand)}…</div></div>`; await loadGL(); }
   app.innerHTML = `${steps(2)}<div class="ed"><div><div class="stage" id="stage"><span class="cmpb" id="cmpb" hidden>Before</span><div class="load">Building your ${esc(L.brand)}…</div>
       <div class="ovl t"><div class="name"><b>${esc(L.brand)} ${esc(L.name.replace(/ \(.+\)$/, ''))}</b><span class="lbl">${L.scr}″ · ${L.w} × ${L.d} cm · <a class="chg lbl" href="#pick" id="chg">Change</a></span></div>
@@ -678,7 +794,7 @@ async function vEditor() {
         <div class="btns"><button id="sdel">Remove</button><button id="sup">To front</button><button class="w" id="sok">Done</button></div></div></div>
     <aside class="drawer">
       <div class="dsec"><div class="dh"><span class="dn">1</span><b>Choose a surface</b></div><div class="seg seg4" id="surf">${Object.entries(SN4).map(([k, n]) => `<button data-s="${k}">${n}<i></i></button>`).join('')}</div></div>
-      <div class="dsec dgrow"><div class="dh"><span class="dn">2</span><b>Pick your design</b></div><div class="seg" id="tab"><button data-t="skins">Skins</button><button data-t="stickers">Stickers</button><button data-t="colour">Colour</button></div>
+      <div class="dsec dgrow"><div class="dh"><span class="dn">2</span><b>Pick your design</b></div><div class="seg" id="tab"><button data-t="skins">Skins</button><button data-t="stickers">Stickers</button><button data-t="art">Your art</button><button data-t="colour">Colour</button></div>
       <div id="pane"></div></div>
       <div class="dsec"><div class="dh"><span class="dn">3</span><b>Review &amp; add to cart</b><button class="rst" id="reset" type="button">Start again</button></div>
       <div class="acts"><button class="btn" id="undo" aria-label="Undo">↶ Undo</button><button class="btn" id="redo" aria-label="Redo">↷ Redo</button><button class="btn" id="cmp" aria-pressed="false">Before / after</button><button class="btn" id="shot">Save design</button><button class="btn y" id="cart">Add to cart</button></div></div>
@@ -693,7 +809,7 @@ async function vEditor() {
   stg.addEventListener('dblclick', e => e.preventDefault()); ['gesturestart', 'gesturechange'].forEach(ev => document.addEventListener(ev, e => e.preventDefault()));
   $('#views').onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; const v = b.dataset.v; document.querySelectorAll('#views button').forEach(x => x.classList.toggle('on', x === b)); if (v !== 'hero') { surf = v; refresh(); } go(v); };
   $('#lida').oninput = e => { setLid(+e.target.value); idle = false; };
-  $('#surf').onclick = e => { const b = e.target.closest('[data-s]'); if (!b) return; const k = b.dataset.s; if (k === 'pad') { surf = 'kb'; part = 'pad'; tab = 'skins'; } else { surf = k; part = 'kb'; } sel = -1; pane(); go(surf); ['lid', 'kb', 'bot'].forEach(schedule); };
+  $('#surf').onclick = e => { const b = e.target.closest('[data-s]'); if (!b) return; const k = b.dataset.s; if (k === 'pad') { surf = 'kb'; part = 'pad'; if (tab !== 'art') tab = 'skins'; } else { surf = k; part = 'kb'; } sel = -1; pane(); go(surf); ['lid', 'kb', 'bot'].forEach(schedule); };
   $('#tab').onclick = e => { const b = e.target.closest('[data-t]'); if (b) { tab = b.dataset.t; pane(); } };
   $('#ssz').oninput = e => { items[surf][sel].s = e.target.value / 100; schedule(surf); };
   $('#srt').oninput = e => { items[surf][sel].r = +e.target.value; schedule(surf); };
@@ -701,9 +817,9 @@ async function vEditor() {
   $('#sdel').onclick = () => { snap(); items[surf].splice(sel, 1); sel = -1; refresh(); schedule(surf); };
   $('#sup').onclick = () => { snap(); items[surf].push(items[surf].splice(sel, 1)[0]); sel = items[surf].length - 1; schedule(surf); };
   $('#sok').onclick = () => { sel = -1; refresh(); schedule(surf); };
-  const restore = h => { const o = JSON.parse(h); Object.assign(items, o.items); Object.assign(skin, o.skin); sel = -1; refresh(); ['lid', 'kb', 'bot'].forEach(x => paint(x)); save3(); };
-  $('#undo').onclick = () => { const h = hist.pop(); if (!h) return toast('Nothing to undo'); redo.push(JSON.stringify({ items, skin })); restore(h); };
-  $('#redo').onclick = () => { const h = redo.pop(); if (!h) return toast('Nothing to redo'); hist.push(JSON.stringify({ items, skin })); restore(h); };
+  const restore = h => { const o = JSON.parse(h); Object.assign(items, o.items); Object.assign(skin, o.skin); if (o.artT) Object.assign(artT, o.artT); syncSize(); sel = -1; refresh(); ['lid', 'kb', 'bot'].forEach(x => paint(x)); save3(); };
+  $('#undo').onclick = () => { const h = hist.pop(); if (!h) return toast('Nothing to undo'); redo.push(JSON.stringify({ items, skin, artT })); restore(h); };
+  $('#redo').onclick = () => { const h = redo.pop(); if (!h) return toast('Nothing to redo'); hist.push(JSON.stringify({ items, skin, artT })); restore(h); };
   $('#reset').onclick = () => { if (!Object.values(items).flat().length && !Object.values(skin).some(Boolean)) return toast('Already empty'); if (!confirm('Take everything off this laptop? (Undo brings it back)')) return;
     snap(); for (const k in items) items[k] = []; for (const k in skin) skin[k] = ''; sel = -1; refresh(); ['lid', 'kb', 'bot'].forEach(x => paint(x)); save3(); toast('Fresh start'); };
   $('#shot').onclick = () => { const n = Object.values(items).flat().length + Object.values(skin).filter(Boolean).length; if (!n) return toast('Add a sticker or a skin first');
@@ -712,7 +828,7 @@ async function vEditor() {
   let cmpS = null;   // before / after: take the design off for a moment, then put it back exactly as it was
   const cmpOff = () => { if (!cmpS) return; const o = JSON.parse(cmpS); cmpS = null; Object.assign(items, o.items); Object.assign(skin, o.skin); ['lid', 'kb', 'bot'].forEach(x => { paint(x); syncStickers(x); }); $('#cmp').setAttribute('aria-pressed', 'false'); $('#cmp').textContent = 'Before / after'; $('#cmpb').hidden = true; document.body.classList.remove('cmping'); refresh(); };
   $('#cmp').onclick = () => { if (cmpS) return cmpOff(); if (!Object.values(items).flat().length && !Object.values(skin).some(Boolean)) return toast('Add a skin or a sticker first');
-    sel = -1; cmpS = JSON.stringify({ items, skin }); for (const k in items) items[k] = []; for (const k in skin) skin[k] = ''; ['lid', 'kb', 'bot'].forEach(x => { paint(x); syncStickers(x); });
+    sel = -1; cmpS = JSON.stringify({ items, skin, artT }); for (const k in items) items[k] = []; for (const k in skin) skin[k] = ''; ['lid', 'kb', 'bot'].forEach(x => { paint(x); syncStickers(x); });
     $('#cmp').setAttribute('aria-pressed', 'true'); $('#cmp').textContent = 'Show after'; $('#cmpb').hidden = false; document.body.classList.add('cmping'); updateTF(); };
   $('.drawer').addEventListener('pointerdown', e => { if (cmpS && !e.target.closest('#cmp')) cmpOff(); }, true);
   pane(); refresh(); PT('pane');
@@ -787,7 +903,7 @@ function saveMine(d) { const mine = store.get('sl-mine', []).filter(m => m.id !=
   mine.unshift({ id: saveMine.id, at: Date.now(), name: d.name, d, thumb: d.thumb || thumb() }); store.set('sl-mine', mine.slice(0, 12)); }
 function refresh() { save3();
   document.querySelectorAll('#surf [data-s]').forEach(b => { const k = b.dataset.s; b.classList.toggle('on', k === uiSurf()); const n = (items[k] || []).length + (skin[k] ? 1 : 0); b.querySelector('i').textContent = n || ''; });
-  const tb = $('#tab'); if (tb) tb.hidden = uiSurf() === 'pad';
+  const tb = $('#tab'); if (tb) { const pd = uiSurf() === 'pad'; tb.querySelectorAll('[data-t=stickers],[data-t=colour]').forEach(x => x.hidden = pd); }
   document.querySelectorAll('#tab [data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
   const sb = $('#selbar'); if (!sb) return; sb.hidden = true; $('#hint').hidden = sel >= 0; $('#hint').textContent = sel >= 0 ? (matchMedia('(pointer:coarse)').matches ? 'Drag to move · corners to resize · ↻ to turn' : 'Drag to move · corners to resize · ↻ to turn') : 'Drag to turn · pinch to zoom'; updateTF();
   if (sel >= 0) { const o = items[surf][sel]; $('#ssz').value = Math.round(o.s * 100); $('#srt').value = o.r; }
@@ -816,7 +932,8 @@ function pane() {
       ${SOLID.map(([id, n, c]) => `<button class="sk ${skin[tg] === id ? 'on' : ''}" data-x="${id}"><span style="background:${c}"></span><span class="lbl">${n}</span></button>`).join('')}</div>
       <p class="fitn">${tg === 'pad' ? 'Just the trackpad. It still clicks and swipes.' : `Cut to fit your ${esc(L.brand)} ${L.scr}″. Your price shows in the cart.`}</p>`;
     $('#sk').addEventListener('pointerdown', e => { const b = e.target.closest('[data-x]'); if (b && b.dataset.x.startsWith('ph-')) skinImg(b.dataset.x); });   // start decoding on touch, before the tap ends
-    $('#sk').onclick = e => { const b = e.target.closest('[data-x]'); if (!b) return; snap(); skin[tg] = b.dataset.x; document.querySelectorAll('#sk .sk').forEach(x => x.classList.toggle('on', x === b)); paint(surf); if (!toPhotoOrGL()) go(surf); };
+    $('#sk').onclick = e => { const b = e.target.closest('[data-x]'); if (!b) return; snap(); skin[tg] = b.dataset.x; syncSize(); document.querySelectorAll('#sk .sk').forEach(x => x.classList.toggle('on', x === b)); paint(surf); if (!toPhotoOrGL()) go(surf); };
+  } else if (tab === 'art') { artPane(p);
   } else {
     p.innerHTML = `<div class="lbl" style="margin-bottom:10px">Colours this model comes in</div><div class="cols" id="cl">${L.cols.map(c => `<button class="${c === col ? 'on' : ''}" data-c="${c}"><i style="background:${LCOL[c]}"></i>${c[0].toUpperCase() + c.slice(1)}</button>`).join('')}</div>`;
     $('#cl').onclick = e => { const b = e.target.closest('[data-c]'); if (!b) return; col = b.dataset.c; build(); pane(); };
@@ -828,6 +945,7 @@ let fromLink = null; if (location.hash.startsWith('#d-')) try { fromLink = JSON.
 const LL = fromLink && LAPS.find(l => `${l.brand} ${l.name}` === fromLink.n);
 const st = LL ? null : store.get('sl-design3', null);
 if (st && st.skin) Object.assign(skin, st.skin);
+if (st && st.artT) Object.assign(artT, st.artT);
 if (st && st.skinSize === 'C') skinSize = 'C';
 if (LL) { L = LL; col = L.cols.includes(fromLink.c) ? fromLink.c : L.cols[0]; for (const k in items) items[k] = ((fromLink.i || {})[k] || []).filter(o => CODE[o[0]]).map(([c, x, y, sz, r]) => ({ c, x, y, s: sz, r }));
   Object.assign(skin, { lid: '', kb: '', bot: '', pad: '', ...(fromLink.k || {}) }); vEditor(); toast('Design from an order'); } else if (st && LAPS[st.i] && location.hash !== '#pick') { L = LAPS[st.i]; col = L.cols.includes(st.col) ? st.col : L.cols[0];
