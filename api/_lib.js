@@ -208,7 +208,7 @@ export async function confirmPayment(reference) {
   delete o.payIssue; (o.history ||= []).push({ s: 'paid', at: Date.now(), by: 'Paystack' });
   if (o.status === 'new') { o.status = 'confirmed'; o.history.push({ s: 'confirmed', at: Date.now(), by: 'Paystack' }); }
   await saveOrder(f.dir, o);
-  await import('./production.js').then(m => m.ensureJob(o)).catch(() => null);
+  await import('./production.js').then(m => m.ensureJob(o).then(() => m.kickGenerate(SITE, o.id))).catch(() => null);   // print files start as soon as payment is verified
   const job = [...(o.packs || []).map(p => `${p.q}× ${p.label}`), (o.singles || []).length ? `${o.singles.reduce((a, x) => a + x.q, 0)} singles` : '', o.design ? `custom ${o.design.size || ''} pack` : ''].filter(Boolean).join(' · ');
   await pushAll({ title: `💰 Paid GH₵${rec.amount} · ${o.id}`, body: `${o.name} · ${rec.channel === 'mobile_money' ? 'MoMo' : rec.channel || ''}`, url: `/admin/#${o.id}`, tag: o.id + '-paid',
     printer: { title: `🖨 Ready to print · ${o.id}`, body: job.slice(0, 160), url: `/printer/#${o.id}`, tag: o.id + '-print' } }).catch(() => {});

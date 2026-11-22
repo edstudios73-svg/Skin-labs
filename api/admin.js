@@ -104,12 +104,12 @@ const PRINT_STEPS = ['artwork', 'printing', 'qc', 'ready', 'hold', 'clarify'];
 async function printer(req, res, by, q, b) {
   if (req.method === 'GET') {
     if (q.a !== 'orders') return json(res, 403, { error: 'The printer login only sees the print queue' });
-    return json(res, 200, { orders: (await allOrders()).map(forPrinter), push: !!process.env.VAPID_PUBLIC });
+    return json(res, 200, { orders: (await allOrders()).filter(o => o.paid).map(forPrinter), push: !!process.env.VAPID_PUBLIC });   // the printer only ever sees paid orders
   }
   if (req.method !== 'POST') return json(res, 405, { error: 'GET or POST' });
   if (b.a === 'push-test') return json(res, 200, { result: await pushAll({ printer: { title: 'Skin Lab · print queue', body: 'Notifications are on. Paid orders will show up like this.', url: '/printer/', tag: 'test' } }) });
   const id = String(b.id || ''); if (!/^SL-[2-9A-Z]{5}$/.test(id)) return json(res, 400, { error: 'Bad order id' });
-  const f = await findOrder(id); if (!f) return json(res, 404, { error: 'No such order' });
+  const f = await findOrder(id); if (!f || !f.order.paid) return json(res, 404, { error: 'No paid order with that number' });
   const o = f.order; o.history ||= [];
   if (b.a === 'status') {
     if (!PRINT_STEPS.includes(b.status)) return json(res, 403, { error: 'The printer can only move orders through artwork, printing, quality check and ready' });
