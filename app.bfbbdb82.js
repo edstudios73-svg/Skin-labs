@@ -414,8 +414,8 @@ const SKCATN = { anime: 'Anime', heroes: 'Heroes', art: 'Art', cars: 'Cars', foo
 const prodPack = p => ({ key: p.id, kind: 'pack', id: p.id, name: p.nice, cat: (CAT[p.cat] || {}).name || 'Stickers', catId: p.cat, img: sh(p.id, 'sheets-sm'), price: p.price, isNew: !!(p.new || p.drop),
   note: p.size === 'XL' ? 'XL lid sticker · about 18 cm' : p.size === 'A3' ? `A3 sheet · ${p.items.length} stickers` : `A4 sheet · ${p.items.length} stickers${p.a5 ? ` · A5 ${CUR}${p.p5}` : ''}`,
   href: '#' + p.id, design: `/design/?pack=${encodeURIComponent(p.id)}` });
-const prodSkin = s => ({ key: 'skin~' + s[0], kind: 'skin', id: s[0], name: s[1], cat: SKCATN[SKTAG[s[0]]] || 'Laptop skin', catId: 'skins', img: `skins/${s[0]}-s.${IX}`, price: SKINP.M.price, isNew: NEWSKIN.has(s[0]),
-  note: `Laptop skin · ${SKINP.M.fit}`, href: '#skin-' + s[0], design: `/design/?skin=${encodeURIComponent(s[0])}` });
+const prodSkin = s => ({ key: 'skin~' + s[0], kind: 'skin', id: s[0], name: s[1], cat: SKCATN[SKTAG[s[0]]] || 'Laptop skin', catId: 'skins', img: `skins/${s[0]}-s.${IX}`, price: SKINP.S.price, from: 1, isNew: NEWSKIN.has(s[0]),
+  note: 'Sized to your laptop', href: '#skin-' + s[0], design: `/design/?skin=${encodeURIComponent(s[0])}` });
 const prodSingle = c => { const { p, it } = CODE[c]; return { key: 'one~' + c, kind: 'single', id: c, name: `${p.nice} · ${c}`, cat: (CAT[p.cat] || {}).name || 'Sticker', catId: 'singles', spr: [p, it], price: PRICE,
   note: 'Single sticker', href: '#' + p.id, design: `/design/?sticker=${encodeURIComponent(c)}` }; };
 const shopPacks = () => D.packs.filter(p => !p.free && CAT[p.cat]);
@@ -424,22 +424,24 @@ const shopSingles = () => shopPacks().flatMap(p => p.items.slice(0, 2).map(it =>
 function prodCard(x, i = 9) {
   const pic = x.spr ? `<span class="pc-spr">${spr(x.spr[0], x.spr[1], 150)}</span>`
     : `<img src="${x.img}" alt="${esc(x.name)}" loading="${i < 8 ? 'eager' : 'lazy'}" decoding="async">`;
-  const q = x.kind === 'single' ? cart[x.id] : packs[x.kind === 'skin' ? `skin~${x.id}~M` : x.id];
+  const q = x.kind === 'single' ? cart[x.id] : packs[x.kind === 'skin' ? skinKey(x.id) : x.id];
   return `<article class="pc ${x.kind === 'skin' ? 'is-skin' : ''}" data-key="${esc(x.key)}">
     <a class="pc-img" href="${x.href}" aria-label="${esc(x.name)}">${x.isNew ? '<span class="pc-tag">New</span>' : ''}${pic}</a>
     <div class="pc-meta"><span class="pc-cat">${esc(x.cat)}</span><a class="pc-name" href="${x.href}">${esc(x.name)}</a>
-      <div class="pc-row"><span class="pc-price">${CUR}${x.price}</span><span class="pc-note">${esc(x.note)}</span></div></div>
+      <div class="pc-row"><span class="pc-price">${x.from ? 'from ' : ''}${CUR}${x.price}</span><span class="pc-note">${esc(x.note)}</span></div></div>
     <div class="pc-act"><a class="pc-btn pc-design" href="${x.design}">Design on my laptop</a>
       <button type="button" class="pc-btn pc-add" data-add="${esc(x.key)}">${q ? `In cart (${q}) · add` : 'Add to cart'}</button></div></article>`;
 }
+const mySkinZ = () => { const d = store.get('sl-design3', null); return d && d.scr ? skinFor(d.scr) : 'M'; };
+const skinKey = id => `skin~${id}~${mySkinZ()}`;
 function addProduct(key) {
   const [t, id] = key.startsWith('skin~') ? ['skin', key.slice(5)] : key.startsWith('one~') ? ['single', key.slice(4)] : ['pack', key];
   let name;
   if (t === 'single') { if (!CODE[id]) return; cart[id] = Math.min((cart[id] || 0) + 1, 99); saveCart(); name = `Sticker ${id}`; }
-  else if (t === 'skin') { if (!SKIN[id]) return; const k = `skin~${id}~M`; setPack(k, (packs[k] || 0) + 1); name = `${SKIN[id][1]} skin (${SKINP.M.fit})`; }
+  else if (t === 'skin') { if (!SKIN[id]) return; const k = skinKey(id); setPack(k, (packs[k] || 0) + 1); name = `${SKIN[id][1]} skin`; }
   else { if (!PK[id]) return; setPack(id, (packs[id] || 0) + 1); name = PK[id].nice; }
   buzz(); updBar();
-  document.querySelectorAll(`.pc[data-key="${CSS.escape(key)}"] .pc-add`).forEach(b => { const q = t === 'single' ? cart[id] : packs[t === 'skin' ? `skin~${id}~M` : id]; b.textContent = `In cart (${q}) · add`; b.classList.add('done'); setTimeout(() => b.classList.remove('done'), 900); });
+  document.querySelectorAll(`.pc[data-key="${CSS.escape(key)}"] .pc-add`).forEach(b => { const q = t === 'single' ? cart[id] : packs[t === 'skin' ? skinKey(id) : id]; b.textContent = `In cart (${q}) · add`; b.classList.add('done'); setTimeout(() => b.classList.remove('done'), 900); });
   for (const s of ['#nv-cart', '#t-cart']) { const e = $(s); if (e) { e.classList.remove('bump'); void e.offsetWidth; e.classList.add('bump'); } }
   toast(`Added to cart: ${name}`);
 }
@@ -481,7 +483,7 @@ function vHome() {
         <div class="h3-btns"><a class="b3 b3-w" href="#explore">Explore Designs</a><a class="b3 b3-o" href="/design/">Create Your Own</a></div>
         <ul class="h3-facts"><li>Skins from ${CUR}${SKINP.S.price}</li><li>Stickers from ${CUR}${PRICE}</li><li>Printed in Accra</li></ul></div>
       <a class="h3-art" href="#explore" aria-label="Explore designs">${hero.map((s, i) => `<span class="lid lid${i}"><img src="skins/${s[0]}-s.${IX}" alt="${esc(s[1])} laptop skin" fetchpriority="high"><i class="cam"></i></span>`).join('')}
-        <span class="h3-cap"><b>${esc(hero[0] ? hero[0][1] : '')}</b> laptop skin · ${CUR}${SKINP.M.price}</span></a>
+        <span class="h3-cap"><b>${esc(hero[0] ? hero[0][1] : '')}</b> laptop skin</span></a>
     </section>
     ${myOrders()}${lastOrder()}
     <section class="gal" id="explore">
