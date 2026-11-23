@@ -46,7 +46,7 @@ h2{font:400 28px/1.1 'Instrument Serif',serif;margin-bottom:12px}
 .steps li.done span,.steps li.cur span{color:#fff}.steps span{color:#888}.steps button{font-size:12px;border:1px solid var(--line2);padding:6px 10px}.steps button:hover{border-color:#fff}
 .files{list-style:none}.files li{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px;align-items:center}
 .btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 16px;border:1px solid #fff;font-weight:500;width:100%}
-.btn.w{background:#fff;color:#000}.btn[disabled]{opacity:.35;cursor:not-allowed}
+.btn.w{background:#fff;color:#000}.btn.w.tp{background:repeating-conic-gradient(#fff 0 25%,#e6e6e6 0 50%) 0 0/14px 14px;color:#000;border:1px solid #fff}.btn[disabled]{opacity:.35;cursor:not-allowed}
 .dl{display:grid;gap:8px}@media (min-width:700px){.dl{grid-template-columns:1fr 1fr}.dl .btn.w{grid-column:1/-1}}
 .note{border-left:2px solid var(--warn);padding:10px 12px;background:#141008;color:#eee;font-size:13px;margin-top:10px}
 .lock{border:1px dashed var(--line2);padding:14px;color:#bbb;font-size:13px}
@@ -147,7 +147,7 @@ async function job(id) {
         ${j.failed ? `<div class="note" style="border-color:var(--bad)">Generation failed: ${esc((j.gen && j.gen.error) || 'unknown error')}. Fix the problem, then generate again.</div>` : ''}
         ${j.blocked === 'needs-verification' ? `<div class="note">Files were made only for the parts that have a verified template. ${(j.warnings || []).map(esc).join(' ')}</div>` : ''}
         ${(j.files || []).length ? `<p class="lbl" style="margin-bottom:8px">Package v${j.version || 1} · ${j.files.length - 1} files · ${(j.files[0].bytes / 1e6).toFixed(1)} MB ZIP${j.gen && j.gen.finished ? ' · made ' + when(j.gen.finished) : ''}</p>` : '<p class="sub" style="margin:0 0 12px">Not generated yet.</p>'}
-        ${P ? `<div class="dl"><button class="btn w" data-dl="" ${(j.files || []).length ? '' : 'disabled'}>↓ Download complete package (ZIP)</button>${DLS.map(([n, re]) => { const f = (j.files || []).find(x => re.test(x.name)); return `<button class="btn" ${f ? `data-dl="${esc(f.name)}"` : 'disabled'}>${n}</button>`; }).join('')}</div>
+        ${P ? `<div class="dl"><button class="btn w" data-dl="" ${(j.files || []).length ? '' : 'disabled'}>↓ Download complete package (ZIP)</button>${(() => { const t = (j.files || []).find(x => x.pkg === 'transparent'); return `<button class="btn w tp" ${t ? `data-dl="${esc(t.name)}"` : 'disabled'}>↓ Transparent PNG package (ZIP)${t ? ` · ${(t.bytes / 1e6).toFixed(1)} MB` : ''}</button>`; })()}${DLS.map(([n, re]) => { const f = (j.files || []).find(x => re.test(x.name)); return `<button class="btn" ${f ? `data-dl="${esc(f.name)}"` : 'disabled'}>${n}</button>`; }).join('')}</div>
           <button class="btn" id="gen" style="margin-top:8px" ${j.stage === 'generating' ? 'disabled' : ''}>${(j.files || []).length || j.failed ? '↻ Regenerate files' : 'Generate files'}</button><p class="lbl" id="dlm" role="status" style="margin-top:8px"></p>`
           : `<div class="lock">Production files are downloaded by the Printing Administrator. You can follow their status here.</div>`}
         ${(j.files || []).length ? `<details style="margin-top:12px"><summary class="lbl">All files in the package</summary><ul class="files">${j.files.slice(1).map(f => `<li><span>${esc(f.name)}<br><span class="lbl">${(f.bytes / 1e6).toFixed(2)} MB${f.note ? ' · ' + esc(f.note) : ''}</span></span>${P ? `<button class="lnk" data-dl="${esc(f.name)}">Download</button>` : ''}</li>`).join('')}</ul></details>` : ''}
@@ -256,7 +256,7 @@ async function tpl(key) {
 }
 // downloads: a fresh signed link each time. On a computer the file is streamed and its size + SHA-256 are checked;
 // on phones (or if that fails for any reason) the browser downloads the signed link itself, which works everywhere.
-const DLS = [['General order PNG', /^01-/], ['Transparent artwork', /^12-/], ['Sticker cutlines (PDF)', /^04-/], ['Laptop skin cutlines (PDF)', /^07-/], ['Keyboard cutlines (PDF)', /^10-/], ['Production instructions', /^14-/]];
+const DLS = [['General order PNG', /^01-/], ['Transparent sheet (PNG)', /^03-STICKER-ARTWORK-TRANSPARENT\//], ['Sticker cutlines (PDF)', /^04-/], ['Laptop skin cutlines (PDF)', /^07-/], ['Keyboard cutlines (PDF)', /^10-/], ['Production instructions', /^14-/]];
 const MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform));
 function nativeDl(d) { const a = Object.assign(document.createElement('a'), { href: d.url, download: d.name, rel: 'noopener' }); document.body.appendChild(a); a.click(); a.remove(); }
 async function download(id, name, btn) {

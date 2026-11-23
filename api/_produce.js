@@ -207,15 +207,17 @@ export async function produce({ order: o, job, plan, base, settings = {}, assets
       const marks = regMarks(W, H, s), paths = sheet.map(p => shapes.get(p.kk).path.map(([x, y]) => [x + p.x, y + p.y]));
       const layers = []; for (const p of sheet) { const sh = shapes.get(p.kk), L = Math.max(0, px(p.x + sh.art.x, s.dpi)), T = Math.max(0, px(p.y + sh.art.y, s.dpi));
         layers.push({ input: await sharp(sh.buf).resize(Math.max(1, Math.min(px(sh.art.w, s.dpi), px(W, s.dpi) - L)), Math.max(1, Math.min(px(sh.art.h, s.dpi), px(H, s.dpi) - T)), { fit: 'fill' }).png().toBuffer(), left: L, top: T }); }
+      const tpng = await sharp({ create: { width: px(W, s.dpi), height: px(H, s.dpi), channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).composite(layers.slice()).png({ compressionLevel: 8 }).withMetadata({ density: s.dpi }).toBuffer();   // the printer's transparent sheet: stickers only, no background, no marks
       if (marks.length) layers.push({ input: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${px(W, s.dpi)}" height="${px(H, s.dpi)}" viewBox="0 0 ${W} ${H}">${marks.map(m => `<rect x="${m.x}" y="${m.y}" width="${m.w}" height="${m.h}" fill="#000"/>`).join('')}</svg>`), left: 0, top: 0 });
       const png = await sharp({ create: { width: px(W, s.dpi), height: px(H, s.dpi), channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } } }).composite(layers).png({ compressionLevel: 8 }).withMetadata({ density: s.dpi }).toBuffer();
-      sheetsOut.push({ size, title: g.title, n: sheetsOut.filter(x => x.size === size).length + 1, W, H, png, paths, marks, count: sheet.length }); stickerPaths.push(...paths); for (const p of sheet) used.add(p.kk);
+      sheetsOut.push({ size, title: g.title, n: sheetsOut.filter(x => x.size === size).length + 1, W, H, png, tpng, paths, marks, count: sheet.length }); stickerPaths.push(...paths); for (const p of sheet) used.add(p.kk);
     }
   }
   if (sheetsOut.length) {
     const multi = sheetsOut.length > 1;
     const nm = sh => `${sh.title ? safe(sh.title) + '-' : 'sheet-'}${sh.size}-${sh.n}`;
     for (const sh of sheetsOut) add(`03-STICKER-ARTWORK/${nm(sh)}.png`, sh.png, 'image/png', { note: `${sh.title ? sh.title + ': ' : ''}${sh.count} stickers on ${sh.size}` });
+    for (const sh of sheetsOut) add(`03-STICKER-ARTWORK-TRANSPARENT/${nm(sh)}.png`, sh.tpng, 'image/png', { note: `Transparent PNG · ${sh.count} stickers · ${sh.size} page, same positions as the cut lines` });
     add('04-STICKER-CUTLINES.pdf', await cutPDF(sheetsOut.map(sh => ({ W: sh.W, H: sh.H, png: sh.png, paths: sh.paths, marks: sh.marks })), s, { title: `${o.id} sticker cut lines` }), 'application/pdf');
     for (const sh of sheetsOut) add(`05-STICKER-CUTLINES${multi ? `-${nm(sh)}` : ''}.svg`, Buffer.from(cutSVG(sh.W, sh.H, sh.paths, sh.marks, s, `${o.id} ${sh.title || 'sticker'} cut lines ${sh.size} ${sh.n}`)), 'image/svg+xml');
     const seen = new Map();   // one transparent file and one proof per sticker printed; a sticker used at two sizes gets the size in its name
@@ -226,6 +228,7 @@ export async function produce({ order: o, job, plan, base, settings = {}, assets
       const proof = await sharp({ create: { width: PW, height: PH, channels: 4, background: '#ffffff' } }).composite([{ input: await sharp(sh.buf).resize(px(sh.art.w, 150), px(sh.art.h, 150), { fit: 'fill' }).png().toBuffer(), left: px(sh.art.x, 150), top: px(sh.art.y, 150) },
         { input: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${PW}" height="${PH}" viewBox="0 0 ${PW / 150 * 25.4} ${PH / 150 * 25.4}"><path d="${svgPath(sh.path)}" fill="none" stroke="#FF00FF" stroke-width="0.35"/></svg>`), left: 0, top: 0 }]).png().toBuffer();
       add(`13-INDIVIDUAL-DESIGNS/${safe(code)}-with-cutline.png`, proof, 'image/png'); }
+    check('Transparent sheets', sheetsOut.every(x => x.tpng && x.tpng.length), `${sheetsOut.length} transparent PNG sheet${sheetsOut.length > 1 ? 's' : ''}`);
     check('Sticker contours are closed vector paths', stickerPaths.every(closedOk), `${stickerPaths.length} paths`);
     check('Sticker transparency', [...shapes.values()].every(x => x.error || x.transparent), [...shapes.values()].filter(x => !x.error && !x.transparent).length ? 'Some stickers have no transparency: rounded-rectangle cut used' : 'All stickers transparent', true);
     check('Registration marks', !s.regMarks || sheetsOut.every(x => x.marks.length === 3), s.regMarks ? '3 marks per sheet' : 'off in settings');
@@ -291,7 +294,7 @@ export async function produce({ order: o, job, plan, base, settings = {}, assets
     ['Products', job.items.map(i => `${i.q} x ${i.label} [${i.kind}${i.surface ? ', ' + SN[i.surface] : ''}${i.size ? ', ' + i.size : ''}]`)],
     ['Validation', checks.map(c => `${c.level === 'ok' ? 'OK  ' : c.level === 'warn' ? 'WARN' : 'FAIL'}  ${c.check}${c.msg ? ': ' + c.msg : ''}`)]];
   add('02-PRODUCTION-SUMMARY.pdf', await textPDF(`${o.id} production summary`, summary), 'application/pdf');
-  const howto = [['Files', ['01 General order: what the whole order is. Not a print file.', '03 Sticker artwork: print at 100% (no scaling) on the sheet size in the file name.', '04/05 Sticker cut lines: same page size, registration marks in the corners, cut on the spot colour layer.', '06 Skin artwork includes the bleed; 07/08 are the matching cut lines.', '09 Keyboard deck artwork and one file per key; 10/11 cut every key on its own path.', '12 Transparent artwork, 13 each design with its cut line for checking.']],
+  const howto = [['Files', ['01 General order: what the whole order is. Not a print file.', '03 Sticker artwork: print at 100% (no scaling) on the sheet size in the file name.', '03 Transparent: the same sheet with no background (transparent PNG, no registration marks), in the same positions as the cut lines. Also in the separate TRANSPARENT-PNG-PACKAGE ZIP with every sticker as its own transparent PNG.', '04/05 Sticker cut lines: same page size, registration marks in the corners, cut on the spot colour layer.', '06 Skin artwork includes the bleed; 07/08 are the matching cut lines.', '09 Keyboard deck artwork and one file per key; 10/11 cut every key on its own path.', '12 Transparent artwork, 13 each design with its cut line for checking.']],
     ['Cutting', [`Spot colour / layer name: ${s.spot}. ${s.cutMode === 'die' ? 'Die cut: through sticker and backing.' : 'Kiss cut: through the sticker vinyl only, not the backing.'}`, `Sticker cut offset ${s.cutOffset} mm from the artwork. Spacing ${s.spacing} mm. Margins ${s.margin} mm.`, 'Skins: the outline is cut inside the surface edge by the template offset; cutouts are grown by it.', 'Check your cutter settings (blade, force, speed) on a test piece first: settings differ per machine and vinyl.']],
     ['Printing', [`Resolution ${s.dpi} dpi. Print at actual size. Laminate skins before cutting.`, s.regMarks ? 'Registration marks: three 5 mm squares (top-left, top-right, bottom-left). Use your cutter\'s print-and-cut mark detection.' : 'Registration marks are off in the settings.']],
     ...(warnings.length ? [['Needs attention before production', warnings]] : [])];
@@ -302,13 +305,20 @@ export async function produce({ order: o, job, plan, base, settings = {}, assets
   check('Files open and match their checksum', !checks.some(c => c.check.startsWith('File ') && !c.ok), `${files.length} files`);
   const zipIn = {}; for (const f of files) zipIn[`${root}/${f.name}`] = [new Uint8Array(f.buf), { level: f.type === 'image/png' ? 0 : 6 }];
   const zip = Buffer.from(zipSync(zipIn));
-  return { files, zip, checks, warnings, root, ms: Date.now() - t0, blocked: checks.some(c => c.level === 'error'), partial: warnings.some(w => /manual verification/.test(w)) };
+  // the printer's transparent PNG package: every sheet and every sticker on a transparent background, nothing else
+  const troot = `${o.id}-TRANSPARENT-PNG-PACKAGE`, tIn = {};
+  for (const f of files) if (/^03-STICKER-ARTWORK-TRANSPARENT\//.test(f.name)) tIn[`${troot}/SHEETS/${f.name.split('/').pop()}`] = [new Uint8Array(f.buf), { level: 0 }];
+  else if (/^12-TRANSPARENT-ARTWORK\//.test(f.name)) tIn[`${troot}/STICKERS/${f.name.split('/').pop()}`] = [new Uint8Array(f.buf), { level: 0 }];
+  const tzip = Object.keys(tIn).length ? Buffer.from(zipSync(tIn)) : null;
+  return { files, zip, tzip, troot, checks, warnings, root, ms: Date.now() - t0, blocked: checks.some(c => c.level === 'error'), partial: warnings.some(w => /manual verification/.test(w)) };
 }
 // store every file privately + the ZIP; returns the records kept on the job
 export async function storePackage(id, version, pk) {
   const dir = `${id}/v${version}`, out = [];
   for (const f of pk.files) { await putPrivate(`${dir}/${f.name}`, f.buf, f.type); out.push({ name: f.name, path: `${dir}/${f.name}`, type: f.type, bytes: f.bytes, sha256: f.sha256, note: f.note || '' }); }
   await putPrivate(`${dir}/${pk.root}.zip`, pk.zip, 'application/zip');
+  if (pk.tzip) { await putPrivate(`${dir}/${pk.troot}.zip`, pk.tzip, 'application/zip');
+    out.unshift({ name: `${pk.troot}.zip`, path: `${dir}/${pk.troot}.zip`, type: 'application/zip', bytes: pk.tzip.length, sha256: sha(pk.tzip), pkg: 'transparent', note: 'Every sheet and every sticker as a transparent PNG' }); }
   out.unshift({ name: `${pk.root}.zip`, path: `${dir}/${pk.root}.zip`, type: 'application/zip', bytes: pk.zip.length, sha256: sha(pk.zip), zip: true });
   return out;
 }

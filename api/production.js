@@ -158,7 +158,7 @@ export default async function handler(req, res) {
   if (b.a === 'download') {   // file links are only ever handed to the Printing Administrator: short-lived, signed, private
     if (!isPrinter) return json(res, 403, { error: 'Production files are downloaded by the Printing Administrator only' });
     const want = String(b.name || ''), fl = (job.files || []).find(x => want ? x.name === want : x.zip); if (!fl) return json(res, 404, { error: (job.files || []).length ? 'That file is not in this package' : 'No production files yet. Generate them first' });
-    const fname = fl.zip ? fl.name : `${id}-${fl.name.split('/').pop()}`, url = await signPrivate(fl.path, 900, fname);
+    const fname = fl.zip || fl.pkg ? fl.name : `${id}-${fl.name.split('/').pop()}`, url = await signPrivate(fl.path, 900, fname);
     (job.downloads ||= []).push({ at: Date.now(), by, name: fl.name }); job.downloads = job.downloads.slice(-100);
     if (fl.zip && job.stage === 'files-ready') { job.stage = 'downloaded'; job.log.push({ at: Date.now(), by, stage: 'downloaded', note: 'Complete package downloaded' }); }
     await saveDoc(`production/${id}`, job);
