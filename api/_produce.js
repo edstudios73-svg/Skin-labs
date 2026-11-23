@@ -167,7 +167,7 @@ export async function produce({ order: o, job, plan, base, settings = {}, assets
     if (it.kind === 'sticker-pack') { const p = assets.pack(it.design); if (!p) { check(`Pack ${it.design}`, false, `Pack ${it.design} not found in the shop data`); continue; }
       const codes = it.size === 'A5' && p.a5 ? p.a5 : p.items.map(x => x[0]), xl = p.size === 'XL';
       for (let q = 0; q < it.q; q++) { const g = xl ? autoA4() : grp(sheetSize({ size: it.size === 'A5' ? 'A5' : p.size }), 'pack', p.name); for (const c of codes) g.list.push({ code: c, longMm: xl ? s.xlMm : s.stickerMm, src: assets.stickerSrc(c, p), from: p.name }); } }
-    else if (it.kind === 'singles' && o.picks && Array.isArray(o.picks.layout) && o.picks.layout.length) { const g = grp(sheetSize({ size: o.picks.size }), 'fixed', `${o.picks.layout.length} singles`);
+    else if (it.kind === 'singles' && o.picks && Array.isArray(o.picks.layout) && o.picks.layout.length) { const g = grp(sheetSize({ size: o.picks.size }), 'fixed', o.picks.title || `${o.picks.layout.length} singles`);
       for (const l of o.picks.layout) if (l && l.c) g.list.push({ code: l.c, longMm: Math.max(10, Math.max(l.w || 0, l.h || 0) - s.spacing) || s.stickerMm, src: assets.stickerSrc(l.c), from: 'Single stickers', box: boxOf(l) }); }
     else if (it.kind === 'singles') { const g = autoA4(); for (const c of it.codes) for (let i = 0; i < c.q; i++) g.list.push({ code: c.code, longMm: s.stickerMm, src: assets.stickerSrc(c.code), from: 'Single stickers' }); }
     else if (it.kind === 'free-sticker') { if (o.design && Array.isArray(o.design.layout) && o.design.layout.some(l => l && l.c === it.code)) continue;   // already placed on the customer's own sheet
