@@ -254,25 +254,30 @@ async function tpl(key) {
     if (!r.ok) { toast(j.error); if (j.check) $('#ck').innerHTML = chk(j.check); return null; } return j; };
   draw();
 }
-// reliable downloads: a fresh signed link each time, streamed with progress, size + SHA-256 checked, up to 3 tries
+// downloads: a fresh signed link each time. On a computer the file is streamed and its size + SHA-256 are checked;
+// on phones (or if that fails for any reason) the browser downloads the signed link itself, which works everywhere.
 const DLS = [['General order PNG', /^01-/], ['Transparent artwork', /^12-/], ['Sticker cutlines (PDF)', /^04-/], ['Laptop skin cutlines (PDF)', /^07-/], ['Keyboard cutlines (PDF)', /^10-/], ['Production instructions', /^14-/]];
+const MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform));
+function nativeDl(d) { const a = Object.assign(document.createElement('a'), { href: d.url, download: d.name, rel: 'noopener' }); document.body.appendChild(a); a.click(); a.remove(); }
 async function download(id, name, btn) {
-  const m = $('#dlm'), label = btn.textContent; btn.disabled = true;
-  for (let tryN = 1; tryN <= 3; tryN++) {
+  const m = $('#dlm'), label = btn.textContent; btn.disabled = true; let d = null, why = '';
+  for (let tryN = 1; tryN <= 3 && !d; tryN++) { try { d = await api('', { a: 'download', id, name }); } catch (e) { if (e.message === 'login') { btn.disabled = false; return; } why = e.message; m.textContent = `Getting the download link failed (${why}). ${tryN < 3 ? 'Retrying…' : ''}`; await new Promise(r => setTimeout(r, 1200 * tryN)); } }
+  if (!d) { btn.disabled = false; m.textContent = `Could not get the download link: ${why}. Check your connection and try again.`; return; }
+  const size = `${(d.bytes / 1e6).toFixed(1)} MB`, done = how => { m.innerHTML = `✓ ${esc(d.name)} (${size}) ${how}. Not in your Downloads? <a href="${esc(d.url)}" target="_blank" rel="noopener">Open the file</a> (link works for 15 minutes).`; btn.disabled = false; btn.textContent = label; if (!name) setTimeout(() => job(id), 1500); };
+  if (!MOBILE && window.crypto && crypto.subtle && window.ReadableStream) {
     try {
-      const d = await api('', { a: 'download', id, name }); m.textContent = `Downloading ${d.name}…`;
+      m.textContent = `Downloading ${d.name}…`;
       const r = await fetch(d.url); if (!r.ok) throw new Error('storage answered ' + r.status);
       const reader = r.body.getReader(), parts = []; let got = 0;
-      for (;;) { const { done, value } = await reader.read(); if (done) break; parts.push(value); got += value.length; m.textContent = `Downloading ${d.name} · ${Math.round(got / d.bytes * 100)}% of ${(d.bytes / 1e6).toFixed(1)} MB`; }
+      for (;;) { const { done: end, value } = await reader.read(); if (end) break; parts.push(value); got += value.length; m.textContent = `Downloading ${d.name} · ${Math.round(got / d.bytes * 100)}% of ${size}`; }
       const blob = new Blob(parts, { type: d.type }); if (blob.size !== d.bytes) throw new Error(`incomplete (${blob.size} of ${d.bytes} bytes)`);
       const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', await blob.arrayBuffer()))].map(x => x.toString(16).padStart(2, '0')).join('');
       if (hash !== d.sha256) throw new Error('the file arrived damaged');
       const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: d.name }); document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
-      m.innerHTML = `✓ ${esc(d.name)} saved and checked. Not in your Downloads? <a href="${esc(d.url)}" target="_blank" rel="noopener">Open the file</a> (link works for 15 minutes).`;
-      btn.disabled = false; btn.textContent = label; if (!name) setTimeout(() => job(id), 800); return;
-    } catch (e) { if (e.message === 'login') return; m.textContent = `Try ${tryN} of 3 failed: ${e.message}${tryN < 3 ? '. Retrying…' : ''}`; await new Promise(r => setTimeout(r, 1200 * tryN)); }
+      return done('saved and checked');
+    } catch (e) { m.textContent = `Checked download did not work here (${e.message}). Using the browser download instead…`; }
   }
-  btn.disabled = false; btn.textContent = label; m.textContent += ' Check your connection and try again.';
+  nativeDl(d); done('download started');
 }
 // ---------- cutting / printing settings: match the files to the actual printer and cutter ----------
 async function settings() {
