@@ -375,7 +375,9 @@ function vPick() {
 }
 
 // ---------- textures ----------
-const TW = 2048;   // laptop surfaces drawn at 2048 px on every device (sharp lid, keys and logo)
+// Phones and tablets get a memory budget: iOS closes the page ("A problem repeatedly occurred") when a tab uses too much.
+const LOWMEM = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform)) || (navigator.deviceMemory && navigator.deviceMemory <= 4) || Math.min(screen.width, screen.height) < 820;
+const TW = LOWMEM ? 1536 : 2048;   // laptop surfaces: 2048 px on computers, 1536 px on phones (still sharp on a phone screen)
 const MAXA = () => (R && R.capabilities.getMaxAnisotropy()) || 8;
 const imgCache = {};
 const img = src => imgCache[src] || (imgCache[src] = new Promise(ok => { const i = new Image(); if (/^https?:/.test(src)) i.crossOrigin = 'anonymous'; i.onload = () => ok(i); i.onerror = () => ok(null); i.src = src; }));
@@ -387,10 +389,12 @@ async function paintSkin(g, id, W, H, where) {
   if (id.startsWith('s-')) { g.fillStyle = SOLID.find(s => s[0] === id)[2]; g.fillRect(0, 0, W, H); return; }
   const im = await skinImg(id); if (!im) return; const k = Math.max(W / im.width, H / im.height); g.drawImage(im, (W - im.width * k) / 2, (H - im.height * k) / 2, im.width * k, im.height * k);
 }
-const SKC = {};
-const skinImg = id => SKC[id] || (SKC[id] = (async () => { const u = `/skins/${id}.${IX}`;
+const SKC = {}, SKU = [], SKMAX = LOWMEM ? 3 : 10;   // decoded skin pictures kept in memory (most recent first)
+const skinUse = id => { const i = SKU.indexOf(id); if (i >= 0) SKU.splice(i, 1); SKU.unshift(id);
+  while (SKU.length > SKMAX) { const old = SKU.pop(); if (Object.values(skin || {}).includes(old)) { SKU.push(old); break; } const p = SKC[old]; delete SKC[old]; if (p) p.then(b => { try { b && b.close && b.close(); } catch (e) {} }); } };
+const skinImg = id => (skinUse(id), SKC[id] || (SKC[id] = (async () => { const u = `/skins/${id}.${IX}`;
   try { if (window.createImageBitmap) { const r = await fetch(u); if (r.ok) return await createImageBitmap(await r.blob(), { resizeWidth: TW, resizeQuality: 'high' }); } } catch (e) {}
-  const i = await img(u); try { if (i && i.decode) await i.decode(); } catch (e) {} return i; })());
+  const i = await new Promise(ok => { const x = new Image(); x.onload = () => ok(x); x.onerror = () => ok(null); x.src = u; }); try { if (i && i.decode) await i.decode(); } catch (e) {} return i; })()));
 // ---------- your own artwork: kept on this device only (IndexedDB), never uploaded unless the customer sends it ----------
 const ART = (() => { let p; const db = () => p ||= new Promise((ok, no) => { const r = indexedDB.open('sl-art', 1); r.onupgradeneeded = () => r.result.createObjectStore('art', { keyPath: 'id' }); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); });
   const tx = async (m, f) => { const d = await db(); return new Promise((ok, no) => { const t = d.transaction('art', m), r = f(t.objectStore('art')); t.oncomplete = () => ok(r && r.result); t.onerror = () => no(t.error); }); };
@@ -414,11 +418,11 @@ async function addArt(file) {   // decode, shrink to print size (3000 px long si
   const a = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: String(file.name || 'My picture').replace(/\.[a-z0-9]+$/i, '').slice(0, 60), blob, w: c.width, h: c.height, src: [bm.width, bm.height], at: Date.now(), thumb: tc.toDataURL('image/jpeg', .8), alpha, sub: '' };
   await ART.put(a); ARTB[a.id] = Promise.resolve(createImageBitmap(blob)); return a;
 }
-const warmSkins = () => PHOTO.forEach(([id], k) => setTimeout(() => skinImg(id), k * 120));
+const warmSkins = () => LOWMEM ? 0 : PHOTO.slice(0, 6).forEach(([id], k) => setTimeout(() => skinImg(id), k * 120));   // a few on computers; on phones a skin loads when tapped
 const isLight = c => ['silver', 'starlight', 'gold', 'white', 'platinum', 'pink', 'beige', 'sage', 'mercury'].includes(c);
 // sticker atlases: one decoded image per pack, kept for the whole visit
 const atlas = id => img(`/atlas/${id}.${IX}`), ready = {};
-const warmAtlas = ids => ids.filter(id => !(PK[id] && PK[id].drop)).forEach(id => atlas(id).then(im => { if (im) ready[id] = im; }));
+const warmAtlas = ids => ids.filter(id => !(PK[id] && PK[id].drop)).slice(0, LOWMEM ? 1 : 6).forEach(id => atlas(id).then(im => { if (im) ready[id] = im; }));   // not every pack of a category at once
 function drawStickers(g, s, W, H) {
   g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
   for (const [i, o] of items[s].entries()) { const { p, it } = CODE[o.c], im = ready[p.id]; if (!im) { atlas(p.id).then(m => { if (m) { ready[p.id] = m; schedule(s); } }); continue; }
@@ -459,7 +463,13 @@ const atlasTex = p => ATX[p.id] || (ATX[p.id] = (() => { const t = new THREE.Tex
 const HDM = {}, HDUV = [[0, 1], [1, 1], [1, 0], [0, 0]];
 const hdMat = c => HDM[c] || (HDM[c] = (() => { const t = new THREE.Texture(); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = MAXA(); t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true;
   const m = new THREE.MeshBasicMaterial({ map: t, transparent: true, alphaTest: .02, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -4, side: THREE.DoubleSide }); m.userData.ok = false;
-  img(hdSrc(c)).then(im => { if (!im) return; t.image = im; t.needsUpdate = true; m.userData.ok = true; ['lid', 'kb', 'bot'].forEach(s => syncStickers(s)); kick(); }); return m; })());
+  hdTexImg(c).then(im => { if (!im) return; t.image = im; t.needsUpdate = true; m.userData.ok = true; ['lid', 'kb', 'bot'].forEach(s => syncStickers(s)); kick(); }); return m; })());
+function hdTexImg(c) {   // a sticker on the 3D laptop is a few hundred pixels on screen: phones keep a 512 px copy and let the full picture go
+  if (!LOWMEM) return img(hdSrc(c));
+  return new Promise(ok => { const i = new Image(); if (/^https?:/.test(hdSrc(c))) i.crossOrigin = 'anonymous'; i.onerror = () => ok(null);
+    i.onload = () => { const k = Math.min(1, 512 / Math.max(i.naturalWidth, i.naturalHeight)), cv = document.createElement('canvas'); cv.width = Math.max(1, Math.round(i.naturalWidth * k)); cv.height = Math.max(1, Math.round(i.naturalHeight * k));
+      const g = cv.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(i, 0, 0, cv.width, cv.height); i.src = ''; ok(cv); }; i.src = hdSrc(c); });
+}
 function quad(o, s) { const { p, it } = CODE[o.c], C = surfPos(s, o.x, o.y), R = surfPos(s, o.x + 1, o.y).sub(C), Dv = surfPos(s, o.x, o.y + 1).sub(C);
   const pw = R.length(), Rn = R.normalize(), Dn = Dv.normalize(), k = o.s * popK(o) * pw / Math.max(it[3], it[4]), hw = it[3] * k / 2, hh = it[4] * k / 2, a = o.r * Math.PI / 180;
   const Rr = Rn.clone().multiplyScalar(Math.cos(a)).addScaledVector(Dn, Math.sin(a)), Dr = Rn.clone().multiplyScalar(-Math.sin(a)).addScaledVector(Dn, Math.cos(a));
@@ -696,7 +706,7 @@ async function warmShaders() { if (!R || WARM.length) return; PT('warm-start');
   try { if (R.compileAsync) await R.compileAsync(scene, cam); else R.compile(scene, cam); } catch (e) {}
   R.shadowMap.needsUpdate = true; R.render(scene, cam); scene.remove(grp); PT('warm-done'); }
 function initGL(host) {
-  R = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); let PR = Math.min(2, devicePixelRatio); R.setPixelRatio(PR); window.__pr = () => PR;
+  R = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); let PR = Math.min(LOWMEM ? 1.6 : 2, devicePixelRatio); R.setPixelRatio(PR); window.__pr = () => PR;
   let ft = 0, fn = 0, fl = 0; const guard = now => { if (fl) { ft += now - fl; fn++; } fl = now; if (fn >= 40) { if (ft / fn > 34 && PR > 1.25) { PR = Math.max(1.25, PR - .25); R.setPixelRatio(PR); lastSz = ''; resize(); } ft = fn = 0; } }; R.toneMapping = THREE.NeutralToneMapping || THREE.ACESFilmicToneMapping; R.toneMappingExposure = 1.05;
   R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap; R.shadowMap.autoUpdate = false; host.appendChild(R.domElement);
   PT('renderer'); scene = new THREE.Scene(); const pm = new THREE.PMREMGenerator(R); scene.environment = pm.fromScene(new RoomEnvironment(), .04).texture; scene.environmentIntensity = .95; PT('pmrem');
