@@ -61,6 +61,7 @@ select{appearance:none;padding-right:34px;background-image:linear-gradient(45deg
 .pill{display:inline-flex;align-items:center;height:22px;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;padding:0 8px;border-radius:999px;white-space:nowrap;background:var(--s3);color:#d4d4d8}
 .pill.new{background:var(--ybg);color:var(--y)}.pill.confirmed,.pill.artwork{background:var(--bbg);color:var(--b)}.pill.printing,.pill.qc{background:var(--pbg);color:var(--p)}.pill.ready,.pill.on-the-way{background:var(--obg);color:var(--o)}
 .pill.delivered,.pill.paid,.pill.success,.pill.approved,.pill.resolved{background:var(--gbg);color:var(--g)}.pill.cancelled,.pill.refunded,.pill.hidden{background:var(--s3);color:var(--dim)}
+.rp{border-color:#fff}.pfb{display:grid;gap:8px;margin-top:10px}@media (min-width:700px){.pfb{grid-template-columns:1fr 1fr}}.ib.big{min-height:54px;font-size:15px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-align:center}.ib.big small{font-size:11px;opacity:.65;font-weight:400}.ib.tp{background:repeating-conic-gradient(#fff 0 25%,#e6e6e6 0 50%) 0 0/14px 14px!important;color:#000!important}
 .pill.clarify,.pill.hold,.pill.failed-delivery,.pill.refund-review,.pill.unpaid,.pill.open,.pill.pending,.pill.abandoned{background:var(--rbg);color:var(--r)}.pill.in-progress,.pill.waiting{background:var(--bbg);color:var(--b)}
 .empty{border:1px dashed var(--line2);border-radius:var(--rad);padding:34px 16px;text-align:center;color:var(--mute)}
 /* order detail */
@@ -216,19 +217,39 @@ function list() {
   $('#lo').onclick = () => { if (confirm('Log out of the print queue?')) { ls('sl-print', null); login(); } };
   notifCard();
 }
+// The order's own print files (made by Print Production): transparent PNG sheet + package, sheet with marks, cut lines.
+// Each button asks for a fresh 15-minute link and lets the phone's browser download it (works on iPhone and Android).
+const PF = [['Transparent sheet (PNG)', f => /^03-STICKER-ARTWORK-TRANSPARENT\//.test(f.name), 1], ['Transparent PNG package (ZIP)', f => f.pkg === 'transparent', 1],
+  ['Print sheet with marks (PNG)', f => /^03-STICKER-ARTWORK\//.test(f.name)], ['Cut lines (PDF)', f => /^04-/.test(f.name)], ['Skin artwork (PDF)', f => /^06-|^07-/.test(f.name)], ['Everything (ZIP)', f => f.zip]];
+async function printFiles(id, again) {
+  const box = document.getElementById('rp'); if (!box) return;
+  let j; try { j = (await api(`/api/production/?a=job&id=${encodeURIComponent(id)}`)).job; } catch (e) { box.innerHTML = `<h2>Ready-to-print files</h2><p class="lbl">${esc(e.message)}</p>`; return; }
+  const files = j.files || [];
+  if (!files.length) { box.innerHTML = `<h2>Ready-to-print files</h2><p class="lbl">${j.stage === 'generating' ? 'Being made now… this takes about 20 seconds.' : 'Not made yet.'}</p><button class="ib solid big" id="mk">Make the print files</button>`;
+    document.getElementById('mk').onclick = async e => { e.target.disabled = true; e.target.textContent = 'Making… about 20 seconds'; try { await api('/api/production/', { method: 'POST', body: JSON.stringify({ a: 'generate', id }) }); } catch (x) { toast(x.message); } printFiles(id, 1); };
+    if (j.stage === 'generating' && !again) setTimeout(() => printFiles(id), 6000); return; }
+  const btns = []; for (const [label, test, main] of PF) for (const f of files.filter(test)) btns.push({ label: files.filter(test).length > 1 ? `${label} · ${f.name.split('/').pop().replace(/\.(png|pdf|zip)$/, '')}` : label, f, main });
+  box.innerHTML = `<h2>Ready-to-print files</h2><p class="lbl">Made ${when(j.gen && j.gen.finished || j.at)} · tap to download. Transparent = no background, stickers only.</p>
+    <div class="pfb">${btns.map((b, i) => `<button class="ib ${b.main ? 'solid tp' : ''} big" data-pf="${i}">↓ ${esc(b.label)}<small>${(b.f.bytes / 1e6).toFixed(1)} MB</small></button>`).join('')}</div><p class="lbl" id="pfm"></p>`;
+  box.querySelectorAll('[data-pf]').forEach(el => el.onclick = async () => { const b = btns[+el.dataset.pf], m = document.getElementById('pfm'); el.disabled = true; m.textContent = 'Getting the file…';
+    try { const d = await api('/api/production/', { method: 'POST', body: JSON.stringify({ a: 'download', id, name: b.f.name }) });
+      const a = Object.assign(document.createElement('a'), { href: d.url, download: d.name, rel: 'noopener' }); document.body.appendChild(a); a.click(); a.remove();
+      m.innerHTML = `✓ Downloading ${esc(d.name)}. Not starting? <a href="${esc(d.url)}" target="_blank" rel="noopener" style="color:#fff">Open the file</a>`; } catch (x) { m.textContent = x.message; } el.disabled = false; });
+}
 function open(id) {
   const o = orders.find(x => x.id === id); if (!o) return toast('That order is not in the queue');
   history.replaceState(null, '', '#' + id); const js = jobs(o), at = STEPS.findIndex(s => s[0] === o.status), paid = o.paidOk;
-  const v = document.createElement('div'); v.className = 'dv'; document.body.style.overflow = 'hidden';
+  const v = document.createElement('div'); v.className = 'dv'; document.body.style.overflow = 'hidden'; if (paid) setTimeout(() => printFiles(o.id), 0);
   const singles = (o.singles || []).map(s => ({ ...s, img: s.img || `/hd/${s.code}.avif` }));
   v.innerHTML = `<div class="dhead"><button class="ib" id="bk">← Queue</button><span class="pill ${o.status}">${ST[o.status] || o.status}</span></div>
   <div class="w"><span class="lbl">${esc(o.id)} · ordered ${when(o.at)}</span><h1>${esc(o.name)}<em>’s job.</em></h1><div class="chips" style="margin-top:8px">${chipsOf(o)}</div>
     ${paid ? '' : '<div class="banner r"><b>Not paid yet.</b> Don\'t print this one. It moves to “To print” by itself once the payment is confirmed.</div>'}
     ${o.note ? `<div class="banner g"><b>Customer note:</b> ${esc(o.note)}</div>` : ''}
+    ${paid ? `<div class="panel rp" id="rp"><h2>Ready-to-print files</h2><p class="lbl">Getting the files…</p></div>` : ''}
     <div class="dgrid"><div>
       <div class="panel"><h2>Print list</h2>${js.map(j => `<div class="job"><a class="im ${j.wide ? 'wide' : ''}" ${j.file ? `href="${esc(j.file)}" target="_blank" rel="noopener"` : ''} style="${j.img ? `background-image:url('${esc(j.img)}')` : ''}" aria-label="Open the file"></a>
         <div><b class="t">${j.q > 1 ? `<span style="color:var(--y)">${j.q}×</span> ` : ''}${esc(j.title)}</b><div class="chips" style="margin-top:6px"><span class="chip ${/^A|XL/.test(j.chip) ? j.chip : j.kind === 'decal' ? 'decal' : 'skin'}">${esc(j.chip)}</span><span class="chip">${esc(j.size || '')}</span>${j.n ? `<span class="chip">${j.n} stickers</span>` : ''}</div>
-        <p>${esc(j.how)}</p><div class="acts">${j.file ? `<a class="ib solid" href="${esc(j.file)}" download target="_blank" rel="noopener">↓ Print file</a>` : (j.kind === 'singles' ? '<span class="lbl">HD file of each sticker below</span>' : '<span class="lbl">File: on the print files page</span>')}</div></div></div>`).join('')}</div>
+        <p>${esc(j.how)}</p><div class="acts">${j.file ? `<a class="ib" href="${esc(j.file)}" download target="_blank" rel="noopener">Shop picture</a>` : (j.kind === 'singles' ? '<span class="lbl">HD file of each sticker below</span>' : '<span class="lbl">File: on the print files page</span>')}</div></div></div>`).join('')}</div>
       ${singles.length ? `<div class="panel"><h2>Single stickers · HD files</h2><div class="codes">${singles.map(s => `<a href="${esc(s.img)}" target="_blank" rel="noopener" download><img src="${esc(s.img)}" alt="" loading="lazy"><small>${esc(s.code)}</small>${s.q > 1 ? `<i>× ${s.q}</i>` : ''}</a>`).join('')}</div></div>` : ''}
       ${o.free ? `<div class="panel"><h2>Free sticker</h2><div class="codes"><a href="${esc(o.free.img || `/free/${o.free.code}.webp`)}" target="_blank" rel="noopener"><img src="${esc(o.free.img || `/free/${o.free.code}.webp`)}" alt=""><small>${esc(o.free.code)}</small></a></div><p class="lbl" style="margin-top:8px">${o.free.onDesign ? 'Already on their laptop design sheet' : 'Add it to this order\'s sheet'}</p></div>` : ''}
       ${o.design && o.design.mock ? `<div class="panel"><h2>Their laptop design</h2><div class="pics"><a href="${esc(o.design.mock)}" target="_blank" rel="noopener"><img src="${esc(o.design.mock)}" alt=""><small>${esc(o.design.laptop || '')}</small></a></div></div>` : ''}
