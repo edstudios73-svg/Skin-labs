@@ -109,6 +109,18 @@ textarea.msg{min-height:96px;font:14px/1.5 Geist,sans-serif;resize:vertical}
 .sti{position:relative;background:var(--s3);border-radius:var(--rad2);aspect-ratio:1;display:grid;place-items:center;padding:6px}.sti img{max-width:100%;max-height:100%;display:block}.sti button{position:absolute;top:3px;right:3px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.75);font-size:11px}
 .sti small{position:absolute;left:5px;bottom:3px;font-family:var(--mono);font-size:9px;color:#888}
 .np{display:grid;gap:8px}.np input{min-height:46px;background:var(--s1);border:1px solid var(--line2);border-radius:var(--rad2);color:#fff;padding:0 12px;font-size:15px;width:100%}.np input[type=color]{width:48px;min-height:32px;height:32px;padding:0;border:0}
+.skh{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:26px 0 12px}.skh h3{margin:0}
+.drop{display:grid;gap:6px;place-items:center;text-align:center;border:1.5px dashed var(--line2);border-radius:var(--rad);padding:34px 16px;cursor:pointer;transition:border-color .2s,background .2s}.drop.over{border-color:var(--fg);background:var(--s2)}
+.drop input{display:none}.drop b{font-size:18px}.opts{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.q{display:grid;gap:6px;margin-top:10px}.q div{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:8px 10px;background:var(--s2);border-radius:10px}.q .bar{height:3px;background:var(--line2);border-radius:3px;overflow:hidden}.q .bar i{display:block;height:100%;background:var(--fg);transition:width .3s}
+.skg{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
+.skc{background:var(--s1);border:1px solid var(--line2);border-radius:var(--rad);padding:12px;display:grid;gap:10px;align-content:start}.skc.live{border-color:rgba(74,222,128,.35)}
+.lapm{position:relative;padding:10px 10px 0;background:linear-gradient(#202020,#141414);border-radius:14px 14px 4px 4px}.lapm img{display:block;width:100%;aspect-ratio:3/2;object-fit:cover;border-radius:6px 6px 2px 2px;box-shadow:0 0 0 1px rgba(255,255,255,.08)}
+.lapm:after{content:'';display:block;height:9px;margin:0 -16px;background:linear-gradient(#3a3a3a,#1d1d1d);border-radius:0 0 12px 12px}
+.skc input{width:100%;min-height:42px;background:var(--s2);border:1px solid var(--line2);border-radius:var(--rad2);color:#fff;padding:0 12px;font:500 15px Geist,system-ui,sans-serif;text-transform:none;letter-spacing:0;margin-top:5px}.skc select{width:100%;margin-top:5px}.skc label.lbl{display:block}
+.opts .ck{white-space:nowrap}.opts select{width:auto;min-width:220px}.fits{display:flex;flex-wrap:wrap;gap:6px}.fits button{font-size:11.5px;padding:6px 9px;border:1px solid var(--line2);border-radius:999px;color:var(--mute)}.fits button.on{background:var(--fg);color:#000;border-color:var(--fg)}.fits button:disabled{opacity:.35}
+.skm{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--mute)}.qual{font-family:var(--mono);font-size:10.5px;padding:3px 7px;border-radius:6px}.qual.good{background:rgba(74,222,128,.12);color:#4ade80}.qual.ok{background:rgba(250,204,21,.12);color:#facc15}.qual.low{background:rgba(248,113,113,.12);color:#f87171}
+.skb{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px}.skb .ib{text-align:center;text-decoration:none;white-space:nowrap;font-size:13px;padding-left:6px;padding-right:6px}.skc select{font-family:Geist,system-ui,sans-serif;text-transform:none;letter-spacing:0;font-size:15px}
 .go{min-height:52px;background:var(--fg);color:#000;font-weight:600;border-radius:var(--rad2)}.go:disabled{opacity:.4}
 .pkx{background:var(--s1);border:1px solid var(--line);border-radius:var(--rad);padding:12px;margin-bottom:12px;display:grid;gap:10px}.pkh{display:grid;grid-template-columns:90px minmax(0,1fr);gap:12px;align-items:start}.pkh img{width:90px;display:block;border-radius:8px}.pkh b{display:block;font-size:17px}.row2{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
 /* pricing (owner) */
@@ -167,14 +179,14 @@ async function load(isFirst) {
     else if (view === 'orders' && !$('.dv')) list(); else badge();
   } catch (e) { if (e.code === 401) { ls('sl-admin', null); login('Wrong password'); } else if (isFirst) login(e.message); }
 }
-function route(h) { if (h === 'stickers' && ROLE === 'owner') stickers(); else if (h === 'pricing' && ROLE === 'owner') pricing(); else if (h === 'payments') payments(); else if (h === 'support') support(true); else if (h === 'reviews') reviewsView(true); else { list(); if (/^SL-/.test(h)) open(h); } }
+function route(h) { if (h === 'skins' && ROLE === 'owner') skinsView(); else if (h === 'stickers' && ROLE === 'owner') stickers(); else if (h === 'pricing' && ROLE === 'owner') pricing(); else if (h === 'payments') payments(); else if (h === 'support') support(true); else if (h === 'reviews') reviewsView(true); else { list(); if (/^SL-/.test(h)) open(h); } }
 function ding() { try { const c = new (window.AudioContext || window.webkitAudioContext)(), o = c.createOscillator(), g = c.createGain(); o.frequency.value = 880; o.connect(g); g.connect(c.destination); g.gain.setValueAtTime(.2, c.currentTime); g.gain.exponentialRampToValueAtTime(.001, c.currentTime + .6); o.start(); o.stop(c.currentTime + .6); } catch (e) {} try { navigator.vibrate && navigator.vibrate([80, 60, 80]); } catch (e) {} }
 function badge() { const n = orders.filter(o => o.status === 'new').length; document.title = (n ? `(${n}) ` : '') + 'Orders · Skin Lab admin'; }
 
 // ---------- top bar ----------
 const topbar = v => { const nNew = orders.filter(o => o.status === 'new').length, nOpen = tickets ? tickets.filter(t => t.status !== 'resolved').length : 0, nRev = reviews ? reviews.filter(r => r.status === 'pending').length : 0;
   return `<header class="top"><div class="row"><b class="brand">Skin Lab<span>admin</span></b><div class="me"><a class="ib" href="/production/" style="text-decoration:none">Print Production</a><span class="who" title="Changes are recorded under this name">${esc(ME())}${ROLE !== 'owner' ? ` · ${ROLE}` : ''}</span><button class="ib" id="lo" aria-label="Log out">Log out</button></div></div>
-  <nav class="nav" aria-label="Sections">${[['orders', 'Orders', nNew], ['payments', 'Payments', 0], ['support', 'Support', nOpen], ['reviews', 'Reviews', nRev], ...(ROLE === 'owner' ? [['pricing', 'Pricing', 0], ['stickers', 'Stickers', 0]] : [])].map(([k, n, c]) => `<button class="${v === k ? 'on' : ''}" data-v="${k}">${n}${c ? `<i>${c}</i>` : ''}</button>`).join('')}</nav></header>`; };
+  <nav class="nav" aria-label="Sections">${[['orders', 'Orders', nNew], ['payments', 'Payments', 0], ['support', 'Support', nOpen], ['reviews', 'Reviews', nRev], ...(ROLE === 'owner' ? [['pricing', 'Pricing', 0], ['stickers', 'Stickers', 0], ['skins', 'Skins', 0]] : [])].map(([k, n, c]) => `<button class="${v === k ? 'on' : ''}" data-v="${k}">${n}${c ? `<i>${c}</i>` : ''}</button>`).join('')}</nav></header>`; };
 function wireTop() {
   app.querySelector('.nav').onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; history.replaceState(null, '', b.dataset.v === 'orders' ? location.pathname : '#' + b.dataset.v); route(b.dataset.v); };
   $('#lo').onclick = () => { if (!confirm('Log out of the admin?')) return; ls('sl-admin', null); login(); };
@@ -494,6 +506,64 @@ function drawStickers() {
   box.querySelectorAll('[data-dels]').forEach(b => b.onclick = async () => { if (!confirm(`Delete sticker ${b.dataset.dels}?`)) return; await api('/api/catalog/', { method: 'POST', body: JSON.stringify({ action: 'del-sticker', code: b.dataset.dels }) }); toast('Deleted'); stickers(); });
   box.querySelectorAll('[data-delp]').forEach(b => b.onclick = async () => { const p = drops.find(x => x.id === b.dataset.delp); if (!confirm(`Delete the whole pack “${p.name}” (${p.items.length} stickers)?`)) return; await api('/api/catalog/', { method: 'POST', body: JSON.stringify({ action: 'del-pack', packId: p.id }) }); toast('Pack deleted'); stickers(); });
   box.querySelectorAll('[data-sheet]').forEach(b => b.onclick = async () => { const p = drops.find(x => x.id === b.dataset.sheet); b.textContent = 'Making…'; try { const sh = await makeSheet(p); await api('/api/catalog/', { method: 'POST', body: JSON.stringify({ action: 'sheet', packId: p.id, img: sh.img, w: sh.w, h: sh.h }) }); toast('Sheet updated'); stickers(); } catch (x) { toast(x.message); b.textContent = 'Remake sheet'; } });
+}
+
+// ---------- skins (owner only): drop in any number of pictures; the server shapes, sizes, names and prices each one ----------
+let SKS = null, SKQ = [];
+async function skinsView() {
+  view = 'skins'; app.innerHTML = `${topbar('skins')}<div class="w"><span class="lbl">Laptop skins</span><h1>Add <em>skins.</em></h1><div id="skv" class="lbl" style="margin-top:20px">Loading your skins…</div></div>`; wireTop();
+  try { SKS = await api('/api/skins/', { method: 'POST', body: JSON.stringify({ a: 'list' }) }); } catch (e) { $('#skv').textContent = e.message; return; }
+  drawSkins();
+}
+const skPrice = () => `${cedi(SKS.prices.S)} · ${cedi(SKS.prices.M)} · ${cedi(SKS.prices.L)}`;
+function skCard(s) {
+  const q = { good: 'Prints sharp', ok: 'Prints fine', low: 'May print soft' }[s.quality] || '';
+  return `<div class="skc ${s.published ? 'live' : ''}" data-id="${s.id}">
+    <a class="lapm" href="${esc(s.big)}" target="_blank" rel="noopener" title="Open full size"><img src="${esc(s.thumb)}" alt="${esc(s.name)}" loading="lazy"></a>
+    <div class="skm"><span class="pill ${s.published ? 'paid' : 'new'}">${s.published ? '● Live in the shop' : 'Draft'}</span><span class="qual ${s.quality}" title="${s.w} × ${s.h} px · about ${s.dpi} dpi on a 17″ lid">${q} · ${s.dpi} dpi</span></div>
+    <label class="lbl">Name<input class="skn" value="${esc(s.name)}" maxlength="40"></label>
+    <label class="lbl">Category<select class="skt">${Object.entries(SKS.tags).map(([k, n]) => `<option value="${k}" ${k === s.tag ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+    <div><span class="lbl">How it fits the lid${s.published ? ' · unpublish to change' : ''}</span><div class="fits">${Object.entries(SKS.fits).map(([k, n]) => `<button data-fit="${k}" class="${(s.fit === k) ? 'on' : ''}" ${s.published ? 'disabled' : ''} title="${k === 'auto' ? 'Chosen: ' + (SKS.fits[s.mode] || s.mode) : ''}">${n}${k === 'auto' && s.fit === 'auto' ? ` · ${esc((SKS.fits[s.mode] || s.mode).toLowerCase())}` : ''}</button>`).join('')}</div></div>
+    <div class="skm"><span>Price by laptop size (S · M · L)</span><b style="color:var(--fg)">${skPrice()}</b></div>
+    <div class="skb">${s.published ? `<button class="ib" data-sk="unpublish">Hide</button><a class="ib" href="/#skin-${s.id}" target="_blank" rel="noopener">See in shop ↗</a>` : `<button class="ib" data-sk="publish" style="background:var(--fg);color:#000;grid-column:span 2">Publish</button>`}<a class="ib" href="/design/?skin=${s.id}" target="_blank" rel="noopener">Try in 3D ↗</a><button class="ib" data-sk="delete" style="color:var(--r);flex:0">✕</button></div></div>`;
+}
+function drawSkins() {
+  const box = $('#skv'); if (!box) return; const live = SKS.skins.filter(s => s.published), drafts = SKS.skins.filter(s => !s.published);
+  box.className = ''; box.innerHTML = `
+    <div class="add"><label class="drop" id="drop"><input type="file" id="skf" accept="image/jpeg,image/png,image/webp" multiple><b>Drop skin pictures here</b><span>or tap to choose · as many as you like</span>
+        <small class="lbl">The system fits each one to a laptop lid, makes the shop and print files, names it and prices it by laptop size</small></label>
+      <div class="opts"><label class="ck"><input type="checkbox" id="skp"> Publish straight away</label><label class="ck">Category <select id="skd"><option value="">Let the system choose</option>${Object.entries(SKS.tags).map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}</select></label></div>
+      <div class="q" id="skq">${SKQ.map(x => `<div><span>${esc(x.f)}</span><span>${esc(x.st)}</span></div>`).join('')}</div></div>
+    ${drafts.length ? `<div class="skh"><h3>Drafts · ${drafts.length} <span class="lbl">only you can see these</span></h3><button class="ib" id="pa" style="background:var(--fg);color:#000">Publish all ${drafts.length}</button></div><div class="skg">${drafts.map(skCard).join('')}</div>` : ''}
+    <div class="skh"><h3>Live in the shop · ${live.length}</h3><span class="lbl">Newest first · shown right after the Top picks</span></div>
+    ${live.length ? `<div class="skg">${live.map(skCard).join('')}</div>` : '<p class="lbl">Nothing published yet.</p>'}`;
+  const drop = $('#drop'); ['dragenter', 'dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => skUpload([...e.dataTransfer.files].filter(f => /^image\//.test(f.type))));
+  $('#skf').onchange = e => skUpload([...e.target.files]);
+  if ($('#pa')) $('#pa').onclick = async () => { const ds = SKS.skins.filter(s => !s.published); $('#pa').disabled = true;
+    for (const s of ds) { try { Object.assign(s, (await skPost({ a: 'publish', id: s.id })).skin); } catch (x) { toast(x.message); } } toast(`${ds.length} skin${ds.length > 1 ? 's' : ''} live in the shop`); drawSkins(); };
+  box.querySelectorAll('.skc').forEach(c => { const s = SKS.skins.find(x => x.id === c.dataset.id); if (!s) return;
+    c.querySelector('.skn').onchange = async e => { try { Object.assign(s, (await skPost({ a: 'update', id: s.id, name: e.target.value })).skin); toast('Renamed'); } catch (x) { toast(x.message); e.target.value = s.name; } };
+    c.querySelector('.skt').onchange = async e => { try { Object.assign(s, (await skPost({ a: 'update', id: s.id, tag: e.target.value })).skin); toast('Category saved'); } catch (x) { toast(x.message); } };
+    c.querySelectorAll('[data-fit]').forEach(b => b.onclick = async () => { if (b.dataset.fit === s.fit) return; c.style.opacity = .5; try { Object.assign(s, (await skPost({ a: 'update', id: s.id, fit: b.dataset.fit })).skin); } catch (x) { toast(x.message); } drawSkins(); });
+    c.querySelectorAll('[data-sk]').forEach(b => b.onclick = async () => { const a = b.dataset.sk;
+      if (a === 'delete' && !confirm(`Delete “${s.name}”? It leaves the shop and its files are removed.`)) return;
+      b.disabled = true; try { const r = await skPost({ a, id: s.id }); if (a === 'delete') SKS.skins = SKS.skins.filter(x => x !== s); else Object.assign(s, r.skin); toast(a === 'publish' ? 'Live in the shop' : a === 'unpublish' ? 'Hidden from the shop' : 'Deleted'); } catch (x) { toast(x.message); } drawSkins(); }); });
+}
+const skPost = body => api('/api/skins/', { method: 'POST', body: JSON.stringify(body) });
+async function skPrep(f) {   // phones send huge photos: keep up to 2600 px on the long side (sharp enough for a 17" lid), as a JPG
+  const url = URL.createObjectURL(f); try { const im = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => no(new Error('Not a picture')); i.src = url; });
+    const k = Math.min(1, 2600 / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas'); c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k);
+    c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); let q = .9, d = c.toDataURL('image/jpeg', q); while (d.length > 4.1e6 && q > .5) d = c.toDataURL('image/jpeg', q -= .1); return d; } finally { URL.revokeObjectURL(url); }
+}
+async function skUpload(files) {
+  if (!files.length) return; const pubNow = $('#skp').checked, tag = $('#skd').value; SKQ = files.map(f => ({ f: f.name, st: 'Waiting…' })); drawSkins(); $('#skp').checked = pubNow; $('#skd').value = tag;
+  const set = (i, st) => { SKQ[i].st = st; const row = $('#skq') && $('#skq').children[i]; if (row) row.lastElementChild.textContent = st; };
+  let i = 0, ok = 0; const work = async () => { while (i < files.length) { const k = i++; try { set(k, 'Preparing…'); const img = await skPrep(files[k]); set(k, 'Fitting, sizing, naming…');
+      const r = await skPost({ a: 'add', img, file: files[k].name, tag: tag || undefined, publish: pubNow }); SKS.skins.unshift(r.skin); ok++; set(k, `✓ ${r.skin.name}${r.skin.published ? ' · live' : ''}`); } catch (x) { set(k, '✕ ' + x.message); } } };
+  await Promise.all([work(), work()]);   // two at a time
+  toast(`${ok} of ${files.length} skin${files.length > 1 ? 's' : ''} ready${pubNow ? ' and live' : ' as drafts'}`); const keep = SKQ; drawSkins(); SKQ = []; setTimeout(() => { if ($('#skq')) $('#skq').innerHTML = keep.map(x => `<div><span>${esc(x.f)}</span><span>${esc(x.st)}</span></div>`).join(''); }, 0);
 }
 
 // ---------- pricing (owner only): the printer's costs -> our prices. Customers and the printer never see this ----------

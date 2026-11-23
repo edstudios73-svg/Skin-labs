@@ -263,11 +263,11 @@ const uiSurf = () => surf === 'kb' && part === 'pad' ? 'pad' : surf;
 // ---------- steps + "Design on my laptop" from the shop ----------
 const steps = n => `<ol class="steps" aria-label="Design steps">${['Choose laptop', 'Design', 'Review & add to cart'].map((t, i) => `<li class="${i + 1 === n ? 'on' : i + 1 < n ? 'done' : ''}" ${i + 1 === n ? 'aria-current="step"' : ''}><span>${i + 1 < n ? '✓' : i + 1}</span>${t}</li>`).join('')}</ol>`;
 const WANT = (() => { const u = new URLSearchParams(location.search); if (u.get('upload')) return { kind: 'upload', id: '' }; const k = ['skin', 'pack', 'sticker'].find(x => u.get(x)); return k ? { kind: k, id: u.get(k) } : null; })();
-const wantName = () => !WANT ? '' : WANT.kind === 'upload' ? 'Your own design' : WANT.kind === 'skin' ? `${(PHOTO.find(x => x[0] === WANT.id) || [, WANT.id.replace(/^ph-/, '').replace(/-/g, ' ')])[1]} skin` : WANT.kind === 'pack' ? (PK[WANT.id] ? PK[WANT.id].name.charAt(0) + PK[WANT.id].name.slice(1).toLowerCase() + ' stickers' : 'Sticker pack') : `Sticker ${WANT.id}`;
+const wantName = () => !WANT ? '' : WANT.kind === 'upload' ? 'Your own design' : WANT.kind === 'skin' ? `${(PHOTO.find(x => x[0] === WANT.id) || [, WANT.id.replace(/^(ph|sk)-/, '').replace(/-[a-z0-9]{4}$/, '').replace(/-/g, ' ')])[1]} skin` : WANT.kind === 'pack' ? (PK[WANT.id] ? PK[WANT.id].name.charAt(0) + PK[WANT.id].name.slice(1).toLowerCase() + ' stickers' : 'Sticker pack') : `Sticker ${WANT.id}`;
 const wantPic = () => !WANT ? '' : WANT.kind === 'upload' ? '<span style="font-size:22px">↑</span>' : WANT.kind === 'skin' ? `<img src="/skins/${encodeURIComponent(WANT.id)}-s.${IX}" alt="">` : WANT.kind === 'pack' && PK[WANT.id] ? spr(PK[WANT.id], PK[WANT.id].items[0], 44) : CODE[WANT.id] ? spr(CODE[WANT.id].p, CODE[WANT.id].it, 44) : '';
 function applyWant() { WANT.done = true; history.replaceState(null, '', location.pathname); const { kind, id } = WANT; surf = 'lid'; sel = -1;
   if (kind === 'upload') { tab = 'art'; part = 'kb'; pane(); go('lid'); return; }
-  if (kind === 'skin') { if (!/^ph-[a-z0-9-]+$/.test(id)) return toast('That design is not available'); if (!PHOTO.some(x => x[0] === id)) PHOTO.unshift([id, wantName().replace(/ skin$/, '')]);
+  if (kind === 'skin') { if (!/^(ph|sk)-[a-z0-9-]+$/.test(id)) return toast('That design is not available'); if (!PHOTO.some(x => x[0] === id)) PHOTO.unshift([id, wantName().replace(/ skin$/, '')]);
     snap(); skin.lid = id; tab = 'skins'; pane(); go('lid'); /* the first paint (already running) picks the skin up; a second paint here would race it */ toast(`${wantName()} is on your lid`); return; }
   if (kind === 'pack') { const pk = PK[id]; if (!pk) return toast('That pack is not available'); ccat = pk.cat in CAT ? pk.cat : ccat; cpack = id; tab = 'stickers'; pane(); bomb(pk); toast(`${wantName()} added to your lid · Undo to clear`); return; }
   const c = CODE[id]; if (!c) return toast('That sticker is not available'); ccat = c.p.cat in CAT ? c.p.cat : ccat; cpack = c.p.id; tab = 'stickers'; snap();
@@ -383,7 +383,7 @@ function rr(g, x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
 async function paintSkin(g, id, W, H, where) {
   if (!id) return;
   if (id.startsWith('up:')) { const im = await artBmp(id.slice(3)); if (im) drawArt(g, im, W, H, artT[where || 'lid']); return; }
-  if (!id.startsWith('s-') && !id.startsWith('ph-')) return;
+  if (!id.startsWith('s-') && !id.startsWith('ph-') && !id.startsWith('sk-')) return;
   if (id.startsWith('s-')) { g.fillStyle = SOLID.find(s => s[0] === id)[2]; g.fillRect(0, 0, W, H); return; }
   const im = await skinImg(id); if (!im) return; const k = Math.max(W / im.width, H / im.height); g.drawImage(im, (W - im.width * k) / 2, (H - im.height * k) / 2, im.width * k, im.height * k);
 }
@@ -941,7 +941,7 @@ function pane() {
       ${PHOTO.map(([id, n]) => `<button class="sk ${skin[tg] === id ? 'on' : ''}" data-x="${id}"><span style="background-image:url(/skins/${id}-s.${IX})"></span><span class="lbl">${n}</span></button>`).join('')}
       ${SOLID.map(([id, n, c]) => `<button class="sk ${skin[tg] === id ? 'on' : ''}" data-x="${id}"><span style="background:${c}"></span><span class="lbl">${n}</span></button>`).join('')}</div>
       <p class="fitn">${tg === 'pad' ? 'Just the trackpad. It still clicks and swipes.' : `Cut to fit your ${esc(L.brand)} ${L.scr}″. Your price shows in the cart.`}</p>`;
-    $('#sk').addEventListener('pointerdown', e => { const b = e.target.closest('[data-x]'); if (b && b.dataset.x.startsWith('ph-')) skinImg(b.dataset.x); });   // start decoding on touch, before the tap ends
+    $('#sk').addEventListener('pointerdown', e => { const b = e.target.closest('[data-x]'); if (b && /^(ph|sk)-/.test(b.dataset.x)) skinImg(b.dataset.x); });   // start decoding on touch, before the tap ends
     $('#sk').onclick = e => { const b = e.target.closest('[data-x]'); if (!b) return; snap(); skin[tg] = b.dataset.x; syncSize(); document.querySelectorAll('#sk .sk').forEach(x => x.classList.toggle('on', x === b)); paint(surf); if (!toPhotoOrGL()) go(surf); };
   } else if (tab === 'art') { artPane(p);
   } else {
@@ -964,4 +964,8 @@ addEventListener('hashchange', () => { if (location.hash === '#pick') vPick(); }
 (() => { const n = Object.values(store.get('sl-packs', {}) || {}).reduce((a, b) => a + b, 0) + Object.values(store.get('sl-cart', {}) || {}).reduce((a, b) => a + b, 0) + (store.get('sl-dsg', null) ? 1 : 0); const b = $('#hbd'); if (b && n) { b.hidden = false; b.textContent = n; } })();
 fetch('/free/free.json').then(r => r.ok ? r.json() : null).then(f => { if (!f) return; try { localStorage.setItem('sl-free-cat', JSON.stringify(f)); } catch (e) {} addFree(f); }).catch(() => {});
 fetch('/api/catalog/').then(r => r.ok ? r.json() : null).then(c => { if (!c) return; try { localStorage.setItem('sl-drops', JSON.stringify(c)); } catch (e) {} if (addDrops(c) && $('#tray')) pane(); }).catch(() => {});
+// skins the owner added in the admin: newest first, before the built-in ones
+const addAdminSkins = j => { let n = 0; for (const s of [...((j && j.skins) || [])].reverse()) if (/^sk-[a-z0-9-]+$/.test(s.id) && !PHOTO.some(x => x[0] === s.id)) { PHOTO.unshift([s.id, s.name]); n++; } return n; };
+try { addAdminSkins(JSON.parse(localStorage.getItem('sl-skins') || 'null')); } catch (e) {}
+fetch('/api/skins/').then(r => r.ok ? r.json() : null).then(j => { if (!j) return; try { localStorage.setItem('sl-skins', JSON.stringify(j)); } catch (e) {} if (addAdminSkins(j) && $('#tray')) pane(); }).catch(() => {});
 </script></body></html>

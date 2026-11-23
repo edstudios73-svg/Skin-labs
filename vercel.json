@@ -89,6 +89,14 @@
  ],
  "rewrites": [
   {
+   "source": "/skins/:f(sk-.*)",
+   "destination": "/api/skins?f=:f"
+  },
+  {
+   "source": "/print/skins/:f(sk-.*)",
+   "destination": "/api/skins?f=print/skins/:f"
+  },
+  {
    "source": "/o/:id/",
    "destination": "/api/o?id=:id"
   },

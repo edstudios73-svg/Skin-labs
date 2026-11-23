@@ -39,7 +39,7 @@ export function jobFromOrder(o) {
   if ((o.singles || []).length) items.push({ kind: 'singles', codes: o.singles.map(s => ({ code: s.code, q: s.q })), q: 1, label: 'Single stickers' });
   if (o.free && !o.free.onDesign) items.push({ kind: 'free-sticker', code: o.free.code, q: 1, label: 'Free sticker' });
   if (d) {
-    const SN = { lid: 'Lid skin', kb: 'Keyboard skin', pad: 'Trackpad skin', bot: 'Bottom skin' }, nm = id => String(id).startsWith('up:') ? "customer's own artwork" : String(id).startsWith('s-') ? 'solid colour ' + String(id).slice(2) : String(id).replace(/^ph-/, '').replace(/-/g, ' ');
+    const SN = { lid: 'Lid skin', kb: 'Keyboard skin', pad: 'Trackpad skin', bot: 'Bottom skin' }, nm = id => String(id).startsWith('up:') ? "customer's own artwork" : String(id).startsWith('s-') ? 'solid colour ' + String(id).slice(2) : String(id).replace(/^(ph|sk)-/, '').replace(/^(.*)-[a-z0-9]{4}$/, (m, a) => String(id).startsWith('sk-') ? a : m).replace(/-/g, ' ');
     for (const [surf, id] of Object.entries(k)) if (id) items.push({ kind: surf === 'kb' ? 'keyboard' : 'skin', surface: surf, design: String(id).startsWith('up:') ? 'customer-artwork' : id, q: 1, label: `${SN[surf] || surf} · ${nm(id)}`, custom: true });
     if (d.n) items.push({ kind: 'custom-stickers', n: d.n, size: d.size, q: 1, label: d.packName || 'Custom sticker pack' });
   }

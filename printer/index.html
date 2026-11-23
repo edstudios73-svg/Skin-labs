@@ -170,7 +170,7 @@ function jobs(o) {
   if (d) {
     if (d.n) out.push({ kind: 'design', chip: d.size || 'A4', size: SHEET[d.size] || '', q: 1, title: `${d.packName || 'Custom pack'} · ${d.n} stickers`, img: d.sheet, file: d.sheet, how: 'The customer\'s own sheet from the designer.' });
     const k = d.raw && d.raw.k || {};
-    for (const [part, id] of Object.entries(k)) if (id && /^ph-/.test(id)) out.push({ kind: 'skin', chip: part === 'pad' ? 'Trackpad' : part === 'kb' ? 'Keyboard' : part === 'bot' ? 'Bottom' : 'Skin ' + (d.skinSize || 'M'), size: part === 'pad' ? 'trackpad only' : `${{ lid: 'lid', kb: 'keyboard area', bot: 'bottom' }[part]} · ${SKZ[d.skinSize] || ''}`, q: 1, title: `${d.laptop || 'Laptop'} · ${part === 'pad' ? 'trackpad' : part} skin`, img: `/skins/${id}-s.webp`, file: `/print/skins/${id}.jpg`, wide: 1, how: 'See the laptop mock-up for placement.' });
+    for (const [part, id] of Object.entries(k)) if (id && /^(ph|sk)-/.test(id)) out.push({ kind: 'skin', chip: part === 'pad' ? 'Trackpad' : part === 'kb' ? 'Keyboard' : part === 'bot' ? 'Bottom' : 'Skin ' + (d.skinSize || 'M'), size: part === 'pad' ? 'trackpad only' : `${{ lid: 'lid', kb: 'keyboard area', bot: 'bottom' }[part]} · ${SKZ[d.skinSize] || ''}`, q: 1, title: `${d.laptop || 'Laptop'} · ${part === 'pad' ? 'trackpad' : part} skin`, img: `/skins/${id}-s.webp`, file: `/print/skins/${id}.jpg`, wide: 1, how: 'See the laptop mock-up for placement.' });
       else if (id && /^s-/.test(id)) out.push({ kind: 'skin', chip: part === 'pad' ? 'Trackpad' : 'Skin', size: 'solid colour', q: 1, title: `${d.laptop || 'Laptop'} · ${part} · solid colour (${id.slice(2)})`, img: d.mock, wide: 1, how: 'Plain coloured vinyl.' });
   }
   return out;

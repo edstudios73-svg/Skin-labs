@@ -489,22 +489,29 @@ function shopList(f) {
   const used = new Set([...top, ...last]), rest = items.filter(x => !used.has(x)), ps = rest.filter(x => x.kind === 'pack'), ss = rest.filter(x => x.kind === 'skin'), ds = rest.filter(x => x.kind === 'decal'), mid = [];
   ps.sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
   for (let i = 0, j = 0, k = 0; i < ps.length || j < ss.length || k < ds.length;) { for (let n = 0; n < 2 && i < ps.length; n++) mid.push(ps[i++]); if (j < ss.length) mid.push(ss[j++]); if (k < ds.length && (mid.length % 9 < 3 || (i >= ps.length && j >= ss.length))) mid.push(ds[k++]); }   // Laptop Art every few rows; never stalls
-  return [...top, ...mid, ...last];
+  const fresh = SKINS.filter(e => /^sk-/.test(e[0])).map(e => items.find(x => x.id === e[0])).filter(x => x && !used.has(x));
+  return [...top.slice(0, TOPPICK.size), ...fresh, ...top.slice(TOPPICK.size), ...mid.filter(x => !fresh.includes(x)), ...last];
 }
 // the order people see on the home page: best first. Ids of packs and skins; anything not listed comes in the middle.
-const FEED = ['ph-spidey-comics', 'p10-stack-and-logos', 'ph-coding', 'p3-code-languages-1', 'ph-porsche93', 'm2-spider-verse', 'ph-cute-hacker', 'p1-hacker-mode',
+// top picks the owner chose: Spider-Man & hero skins, Code Languages I-III, sneakers and street art packs, and all the Laptop Art
+const TOP_SKINS = ['ph-spidey-comics', 'ph-spidey-collage', 'ph-miles', 'ph-panther', 'ph-spidey-scrapbook', 'ph-avengers', 'ph-batman', 'ph-spider-logo', 'ph-marvel', 'ph-joker-ink', 'ph-bvs', 'ph-joker'];
+const TOP_PACKS = ['p3-code-languages-1', 'k1-sneakerhead-1', 'd1-dark-street-art-1', 'p4-code-languages-2', 'k1-sneakerhead-2', 'd1-dark-street-art-2', 'p5-code-languages-3'];
+const TOP_ART = ['dc-iron-blast', 'dc-goku-blast', 'dc-mickey-wink', 'dc-pennywise', 'dc-axe-chase', 'dc-stick-push', 'dc-minions', 'dc-panda-logo', 'dc-heartbeat', 'dc-mickey-pad'];
+const TOPS = (() => { const out = []; for (let i = 0; i < 12; i++) { if (TOP_SKINS[i]) out.push(TOP_SKINS[i]); if (TOP_PACKS[i]) out.push(TOP_PACKS[i]); if (TOP_ART[i]) out.push(TOP_ART[i]); } return out; })();
+// after the top picks: the rest of the best (coding, realistic skins, Marvel, anime, cars), then everything else
+const FEED = [...TOPS, ...['ph-spidey-comics', 'p10-stack-and-logos', 'ph-coding', 'p3-code-languages-1', 'ph-porsche93', 'm2-spider-verse', 'ph-cute-hacker', 'p1-hacker-mode',
   'ph-rose-gold-marble', 'p2-ai-vibe-coding', 'ph-spidey-collage', 'm1-marvel-avengers', 'ph-amg-red', 'p4-code-languages-2', 'ph-kali', 'g1-gta-rockstar',
   'ph-silver-butterflies', 'p6-dev-jokes-1', 'ph-miles', 'an5-one-piece', 'ph-peaky', 'p12-code-and-chaos', 'ph-circuit', 'c1-marvel-chibis',
   'ph-blue-neon-shards', 'p11-database-backend', 'ph-heisenberg', 'v1-car-badges', 'ph-gojo', 'p5-code-languages-3', 'ph-panther', 'k1-sneakerhead-1',
   'ph-code-reaper', 'p7-dev-jokes-2', 'ph-spidey-scrapbook', 'an1-anime-legends', 'ph-tanjiro', 'p9-dev-life', 'ph-avengers', 'c2-cartoon-chaos',
   'ph-galaxy', 'p8-dev-jokes-3', 'ph-jinx', 'an3-akatsuki', 'ph-joker-ink', 'f1-club-crests-i', 'ph-batman', 'gz2-girls-who-code',
   'ph-popbomb', 's1-street-culture', 'ph-starry', 'g3-gamer-mode', 'ph-waterfall', 'q2-gen-z-ghana', 'ph-coder-bomb', 'm4-spidey-pop',
-  'ph-marvel', 'an4-monkey-d-luffy', 'ph-tech-logos', 'v2-jdm-and-euro', 'ph-spider-logo', 'k3-nba-classics', 'ph-mountains', 'g2-warzone-cod', 'ph-reality', 'an7-my-hero-academia'];
+  'ph-marvel', 'an4-monkey-d-luffy', 'ph-tech-logos', 'v2-jdm-and-euro', 'ph-spider-logo', 'k3-nba-classics', 'ph-mountains', 'g2-warzone-cod', 'ph-reality', 'an7-my-hero-academia'].filter(id => !TOPS.includes(id))];
 const FEED_LAST = ['ph-stay-focused', 'ph-wasd', 'ph-panda', 'ph-graffiti', 'ph-girlpower', 'ph-heart-fluffy', 'ph-heart-pink', 'ph-pink', 'ph-rose',
   'emoji-mood', 'g8-ghost-chibi', 'g7-pubg', 's4-retro-tape', 'm3-spider-man', 'v4-bmw-real', 'fc-barca-squad', 'g10-fc-playstyles', 'xl-fc-mobile-mono', 'xl-gold-strength', 'xl-efootball',
   'fc-mobile-cards-1', 'fc-mobile-cards-2', 'fc-madrid-squad'];
 const RANK = new Map([...FEED.map((id, i) => [id, i]), ...FEED_LAST.map((id, i) => [id, 1e4 + i])]), rankOf = x => RANK.has(x.id) ? RANK.get(x.id) : 5e3;
-const TOPPICK = new Set(FEED.slice(0, 16));
+const TOPPICK = new Set(TOPS);
 const byRank = list => list.map((x, i) => [x, i]).sort((a, b) => rankOf(a[0]) - rankOf(b[0]) || a[1] - b[1]).map(a => a[0]);
 // cards between the products that invite people to make their own: placed after these positions in the home feed
 const PROMOS = [[12, { t: 'Your laptop.<br><em>Your design.</em>', s: 'Pick your exact laptop, try any skin and stickers in 3D, see it before you buy.', a: 'Open Design Studio', h: '/design/', imgs: ['ph-spidey-comics', 'ph-porsche93', 'ph-coding'] }],
@@ -1446,6 +1453,12 @@ function render() {
   ['home', 'design', 'inspo'].forEach(k => { $('#t-' + k).classList.toggle('on', tab === k); $('#nv-' + k).classList.toggle('on', tab === k); });
   updBar(); savedBadge(); document.documentElement.classList.remove('nh'); navOn(r);
 }
+// skins the owner adds in the admin (/api/skins): they join the shop, the studio, the cart and the feed like the built-in ones
+function addAdminSkins(j) { let n = 0; for (const x of [...((j && j.skins) || [])].reverse()) { if (!/^sk-[a-z0-9-]+$/.test(x.id) || SKIN[x.id]) continue;
+  const e = [x.id, String(x.name || 'New skin').slice(0, 40), 'photo']; SKINS.unshift(e); SKIN[x.id] = e; SKTAG[x.id] = x.tag || 'art'; NEWSKIN.add(x.id); n++; } return n; }
+try { addAdminSkins(JSON.parse(localStorage.getItem('sl-skins') || 'null')); } catch (e) {}
+fetch('/api/skins/').then(r => r.ok ? r.json() : null).then(j => { if (!j) return; try { localStorage.setItem('sl-skins', JSON.stringify(j)); } catch (e) {}
+  if (addAdminSkins(j) && !document.querySelector('.sheet:not([hidden])')) { const y = scrollY; render(); scrollTo(0, y); } }).catch(() => {});
 addEventListener('hashchange', render);
 fetch('/free/free.json').then(r => r.ok ? r.json() : null).then(f => { if (!f) return; try { localStorage.setItem('sl-free-cat', JSON.stringify(f)); } catch (e) {} if (!FREE.length) { addFree(f); const y = scrollY; render(); scrollTo(0, y); } }).catch(() => {});
 fetch('/api/catalog/').then(r => r.ok ? r.json() : null).then(c => { if (!c) return; try { localStorage.setItem('sl-drops', JSON.stringify(c)); } catch (e) {}
