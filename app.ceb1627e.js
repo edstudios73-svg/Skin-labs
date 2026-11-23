@@ -480,7 +480,7 @@ function shopList(f) {
   if (f === 'art') return DECALS.map(prodDecal);
   if (f.startsWith('skin:')) return shopSkins().filter(x => SKTAG[x[0]] === f.slice(5)).map(prodSkin);
   if (f === 'packs') return byRank(shopPacks().map(prodPack));
-  if (f === 'singles') return shopSingles().map(prodSingle);
+  if (f === 'singles') { setTimeout(() => { location.hash = 'stickers'; }, 0); return shopSingles().map(prodSingle); }   // the full single-sticker page
   if (CAT[f]) return CAT[f].packs.map(id => PK[id]).filter(Boolean).map(prodPack);
   // everything: the hand-picked best first (coding, Spider-Man, realistic skins), mixed so the eye keeps moving,
   // then the rest woven together (2 packs : 1 skin, Laptop Art every few rows), the plainest designs last
@@ -515,6 +515,7 @@ const TOPPICK = new Set(TOPS);
 const byRank = list => list.map((x, i) => [x, i]).sort((a, b) => rankOf(a[0]) - rankOf(b[0]) || a[1] - b[1]).map(a => a[0]);
 // cards between the products that invite people to make their own: placed after these positions in the home feed
 const PROMOS = [[12, { t: 'Your laptop.<br><em>Your design.</em>', s: 'Pick your exact laptop, try any skin and stickers in 3D, see it before you buy.', a: 'Open Design Studio', h: '/design/', imgs: ['ph-spidey-comics', 'ph-porsche93', 'ph-coding'] }],
+  [24, { t: 'Build your<br><em>own pack.</em>', s: 'Pick any of our stickers one by one. We print your picks together on your own named sheet.', a: 'Pick my stickers', h: '#stickers', imgs: ['ph-coding', 'ph-spidey-comics', 'ph-gojo'] }],
   [36, { t: 'Your photo,<br><em>on your laptop.</em>', s: 'Upload any picture and we print it as a skin cut to your model. Lid, keyboard, trackpad, bottom.', a: 'Use my picture', h: '/design/?upload=1', imgs: ['ph-rose-gold-marble', 'ph-silver-butterflies', 'ph-blue-neon-shards'] }],
   [60, { t: 'A free sticker<br><em>with every order.</em>', s: 'Pick it in your cart. Printed in Accra, ready for pickup or delivery.', a: 'Start designing', h: '/design/', imgs: ['ph-cute-hacker', 'ph-miles', 'ph-gojo'] }],
   [96, { t: 'Can’t find<br><em>your vibe?</em>', s: 'Tell us the idea. We design it, you approve it, we print it.', a: 'Send us your idea', idea: 1, imgs: ['ph-kali', 'ph-peaky', 'ph-amg-red'] }]];
@@ -554,7 +555,7 @@ function vHome() {
   const cats = D.cats.filter(c => c.packs.some(id => PK[id]));
   const chips = [['all', 'All'], ['packs', 'Sticker packs'], ['skins', 'Laptop skins'], ['art', ART], ['singles', 'Single stickers'], ...cats.map(c => [c.id, c.name]), ...skinThemes().map(([k, n]) => ['skin:' + k, `${n} skins`])];
   const rv = viewed(4);
-  app.innerHTML = `<section class="intro"><div><h1>Your Laptop. <em>Your Story.</em></h1><p>Laptop skins, sticker packs and Laptop Art. Shop below, or <a href="/design/?upload=1">create your own</a>.</p></div></section>
+  app.innerHTML = `<section class="intro"><div><h1>Your Laptop. <em>Your Story.</em></h1><p>Laptop skins, sticker packs and Laptop Art. Shop below, <a href="#stickers">build your own sticker pack</a>, or <a href="/design/?upload=1">create your own design</a>.</p></div></section>
     ${myOrders()}${lastOrder()}
     <section class="gal" id="explore" aria-label="All products">
       <div id="fbar-s" aria-hidden="true"></div><div class="fbar" id="fbar"><label class="fsearch"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><span class="sr">Search the shop</span>
@@ -1253,6 +1254,37 @@ function vSearch(q0) {
 }
 
 // ---------- saved list ----------
+// ---------- Build your own pack: every sticker as a single, by category; tap to add, they print on the customer's own sheet ----------
+const pickAll = () => { const seen = new Set(), out = []; for (const c of D.cats) { if (c.id === 'xl' || c.id === 'mix') continue; for (const id of c.packs) { const p = PK[id]; if (!p || p.free) continue;
+  for (const it of p.items) { const code = it[0]; if (seen.has(code) || isFree(code) || !CODE[code]) continue; seen.add(code); out.push({ code, p, it, cat: c.id }); } } } return out; };
+let PICKF = 'all', PICKQ = '', PICKIO = null;
+function vStickers(cat) {
+  const all = pickAll(), cats = D.cats.filter(c => all.some(x => x.cat === c.id)); if (cat && cats.some(c => c.id === cat)) PICKF = cat;
+  app.innerHTML = `<section class="sec pk-page" style="padding-top:14px"><div class="crumb"><a href="#">Shop</a> / <span>Build your own pack</span></div>
+    <div class="pk-hero"><h1>Build your <em>own pack.</em></h1><p>Tap any sticker to add it. We print your picks together on your own named sheet. ${CUR}${PRICE} each, from ${CUR}${MIN_SINGLES} an order.</p></div>
+    <div class="pk-bar" id="pk-bar"><label class="pk-q"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="pk-q" placeholder="Search ${all.length.toLocaleString()} stickers… e.g. Python, Messi, Naruto" value="${esc(PICKQ)}" autocomplete="off" enterkeyhint="search"></label>
+      <div class="pk-chips" id="pk-chips" role="tablist"><button type="button" data-f="all" class="${PICKF === 'all' ? 'on' : ''}">All <i>${all.length}</i></button>${cats.map(c => `<button type="button" data-f="${c.id}" class="${PICKF === c.id ? 'on' : ''}">${esc(c.name)} <i>${all.filter(x => x.cat === c.id).length}</i></button>`).join('')}</div>
+      <div class="pk-st" id="pk-st"></div></div>
+    <div class="pk-grid" id="pk-grid"></div><div id="pk-end" aria-hidden="true"></div></section>${footer}`;
+  const grid = $('#pk-grid');
+  const draw = () => {
+    const words = PICKQ.toLowerCase().split(/\s+/).filter(Boolean), hits = words.length ? new Set(searchItems(PICKQ).filter(x => x.type === 'pack').map(x => x.k)) : null;
+    const list = all.filter(x => (PICKF === 'all' || x.cat === PICKF) && (!words.length || hits.has(x.p.id) || words.every(w => `${x.code} ${x.p.nice} ${(CAT[x.cat] || {}).name || ''} ${x.p.tag || ''}`.toLowerCase().includes(w))));
+    if (PICKIO) PICKIO.disconnect(); grid.innerHTML = ''; let n = 0;
+    if (!list.length) { grid.innerHTML = `<div class="pc-empty"><b>No stickers for “${esc(PICKQ)}”</b><span>Try another word, or <a href="#" data-idea="1">ask us to make it</a>.</span></div>`; return; }
+    const more = () => { grid.insertAdjacentHTML('beforeend', list.slice(n, n + 60).map(x => `<button type="button" class="pk-t ${cart[x.code] ? 'on' : ''}" data-pk="${x.code}" aria-pressed="${!!cart[x.code]}" aria-label="${esc(x.p.nice)} sticker ${x.code}">${spr(x.p, x.it, innerWidth >= 1000 ? 150 : innerWidth >= 600 ? 124 : 96)}<small>${x.code}</small><b class="pk-ok" aria-hidden="true">✓</b></button>`).join('')); n += 60; };
+    more(); const end = $('#pk-end');
+    if (n < list.length && 'IntersectionObserver' in window) { PICKIO = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { more(); if (n >= list.length) PICKIO.disconnect(); else { PICKIO.unobserve(end); PICKIO.observe(end); } } }, { rootMargin: '1200px 0px' }); PICKIO.observe(end); }
+    else while (n < list.length) more();
+  };
+  const stat = () => { const ns = nSingles(), sub = ns * PRICE, short = Math.max(0, MIN_SINGLES - singlesSub()), need = Math.ceil(short / PRICE), el = $('#pk-st'); if (!el) return;
+    el.innerHTML = ns ? `<span><b>${ns}</b> picked · ${CUR}${sub}</span>${short > 0 && !nPacks() ? `<span class="pk-need">Add ${need} more to order</span>` : '<a class="pk-go" href="#cart">See my sheet →</a>'}` : '<span class="pk-hint">Tap stickers to start your pack</span>'; };
+  draw(); stat();
+  grid.onclick = e => { const t = e.target.closest('[data-pk]'); if (!t) return; const c = t.dataset.pk; toggle(c); const on = !!cart[c]; t.classList.toggle('on', on); t.setAttribute('aria-pressed', on); if (on) { t.classList.remove('pop'); void t.offsetWidth; t.classList.add('pop'); } stat(); };
+  $('#pk-chips').onclick = e => { const b = e.target.closest('[data-f]'); if (!b) return; PICKF = b.dataset.f; $('#pk-chips').querySelectorAll('[data-f]').forEach(x => x.classList.toggle('on', x === b)); history.replaceState(null, '', PICKF === 'all' ? '#stickers' : '#stickers=' + PICKF); draw(); const top = $('#pk-bar').getBoundingClientRect().top + scrollY - 70; if (scrollY > top) scrollTo(0, top); };
+  let qt; $('#pk-q').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { PICKQ = e.target.value.trim(); draw(); }, 180); };
+  const ch = $('#pk-chips .on'); if (ch) ch.scrollIntoView({ inline: 'center', block: 'nearest' });
+}
 function vSaved(shared) {
   const keys = shared ? shared.split(',').map(decodeURIComponent).filter(k => itemOf(k)) : SAVED.filter(k => itemOf(k));
   app.innerHTML = `<section class="sec" style="padding-top:14px"><div class="crumb"><a href="#">Shop</a> / <span>${shared ? 'Shared list' : 'Saved'}</span></div>
@@ -1433,8 +1465,8 @@ new MutationObserver(ms => ms.forEach(m => { if (m.attributeName === 'hidden' &&
   .observe(document.body, { subtree: true, attributes: true, attributeFilter: ['hidden'] });
 
 // ---------- router ----------
-function navOn(r) { const k = !r ? 'home' : r === 'inspo' || r === 'mine' ? 'inspo' : r === 'contact' || r === 'help' || r.startsWith('help-') ? 'contact' : r === 'account' || r === 'saved' || r.startsWith('saved=') ? '' : 'shop';
-  ['home', 'shop', 'inspo', 'contact'].forEach(x => { const e = $('#nv-' + x); if (e) { e.classList.toggle('on', x === k); e.toggleAttribute('aria-current', x === k); } }); }
+function navOn(r) { const k = !r ? 'home' : r === 'inspo' || r === 'mine' ? 'inspo' : r === 'contact' || r === 'help' || r.startsWith('help-') ? 'contact' : r === 'account' || r === 'saved' || r.startsWith('saved=') ? '' : r === 'stickers' || r.startsWith('stickers=') ? 'pick' : 'shop';
+  ['home', 'shop', 'pick', 'inspo', 'contact'].forEach(x => { const e = $('#nv-' + x); if (e) { e.classList.toggle('on', x === k); e.toggleAttribute('aria-current', x === k); } }); }
 let cartAt = 0;   // a late re-render (live stickers loading) must not close a cart that was just opened
 function finishRoute(r) { scrollTo(0, 0); ['home', 'design', 'inspo'].forEach(k => { $('#t-' + k).classList.toggle('on', k === 'home'); $('#nv-' + k).classList.toggle('on', k === 'home'); }); updBar(); savedBadge(); document.documentElement.classList.remove('nh'); navOn(route()); }
 function render() {
@@ -1444,6 +1476,7 @@ function render() {
   if (r === 'design' || r === 'studio' || r === 'design-pick') { location.replace('/design/'); return; }
   if (r === 'explore' || r === 'contact') { vHome(); finishRoute(''); setTimeout(() => { const t = $(r === 'explore' ? '#explore' : 'footer'); if (t) t.scrollIntoView(); }, 40); return; }
   if (r === 'account') { vAccount(); return finishRoute(r); }
+  if (r === 'stickers' || r.startsWith('stickers=')) { vStickers(r.startsWith('stickers=') ? decodeURIComponent(r.slice(9)) : ''); return finishRoute(r); }
   if (r === 'search' || r.startsWith('search=')) { vSearch(r.startsWith('search=') ? r.slice(7) : ''); return finishRoute(r); }
   if (r === 'saved' || r.startsWith('saved=')) { vSaved(r.startsWith('saved=') ? r.slice(6) : ''); return finishRoute(r); }
   if (r === 'help' || r.startsWith('help-')) { vHelp(r.startsWith('help-') ? r.slice(5) : ''); return finishRoute(r); }

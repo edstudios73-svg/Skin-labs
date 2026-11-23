@@ -748,6 +748,16 @@ footer{display:block;margin-top:56px;padding-top:28px;border-top:1px solid var(-
 .pc-spr{display:grid;place-items:center;width:100%;height:100%}
 .pc-tag{position:absolute;top:10px;left:10px;z-index:2;background:#fff;color:#000;font:500 9.5px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;padding:5px 7px}
 .pc-tag.pc-hot{background:#ffd60a;color:#000}
+.pk-hero h1{font:400 clamp(38px,9vw,64px)/1 var(--serif);letter-spacing:-.02em;margin:6px 0 10px}.pk-hero h1 em{color:#a3a3a3}.pk-hero p{color:#a3a3a3;max-width:60ch;margin:0 0 18px;line-height:1.5}
+.pk-bar{position:sticky;top:var(--hh,64px);z-index:20;background:rgba(0,0,0,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);margin:0 -20px;padding:10px 20px 10px;border-bottom:1px solid #1f1f1f;display:grid;gap:10px}
+.pk-q{display:flex;align-items:center;gap:10px;border:1px solid #333;padding:0 14px;min-height:48px}.pk-q svg{width:18px;height:18px;fill:none;stroke:#888;stroke-width:2;flex:none}.pk-q input{flex:1;background:none;border:0;color:#fff;font-size:16px;outline:none;min-width:0}
+.pk-chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}.pk-chips::-webkit-scrollbar{display:none}
+.pk-chips button{flex:none;border:1px solid #333;padding:9px 13px;font-size:14px;white-space:nowrap;color:#ddd}.pk-chips button i{font-style:normal;font-family:var(--mono);font-size:11px;color:#777;margin-left:3px}.pk-chips button.on{background:#fff;color:#000;border-color:#fff}.pk-chips button.on i{color:#555}
+.pk-st{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px;min-height:22px}.pk-st b{font-size:18px}.pk-need{color:#ffd60a;font-family:var(--mono);font-size:12px;letter-spacing:.04em}.pk-hint{color:#888}.pk-go{background:#ffd60a;color:#000;font-weight:600;padding:8px 12px;text-decoration:none}
+.pk-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}@media (min-width:600px){.pk-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}@media (min-width:1000px){.pk-grid{grid-template-columns:repeat(7,minmax(0,1fr));gap:10px}}
+.pk-t{position:relative;display:grid;place-items:center;gap:4px;aspect-ratio:1/1.12;background:#f2f2f0;border:2px solid transparent;padding:10px 6px 6px;transition:transform .15s,border-color .15s}.pk-t .s{max-width:100%;max-height:calc(100% - 18px)}
+.pk-t small{font-family:var(--mono);font-size:10px;color:#777}.pk-t.on{border-color:#ffd60a;background:#fff8d6}.pk-ok{position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;background:#ffd60a;color:#000;font-size:13px;display:grid;place-items:center;opacity:0;transform:scale(.5);transition:.15s}
+.pk-t.on .pk-ok{opacity:1;transform:none}.pk-t.pop{animation:pkpop .25s}@keyframes pkpop{50%{transform:scale(.92)}}
 .pc-promo{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr);gap:18px;padding:22px 20px;border:1px solid #262626;background:radial-gradient(120% 140% at 100% 0,#1c1c1c 0,#0a0a0a 60%);overflow:hidden;position:relative}
 .pp-pics{position:relative;height:150px}
 .pp-pics img{position:absolute;top:50%;left:50%;width:62%;max-width:300px;aspect-ratio:3/2;object-fit:cover;border-radius:10px;box-shadow:0 14px 36px rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.12);
@@ -823,7 +833,7 @@ footer{display:block;margin-top:56px;padding-top:28px;border-top:1px solid var(-
 
 <header class="top"><div class="wrap">
   <a class="brand" href="#" aria-label="Skin Lab by Baiden Creatives, home"><span class="wm">Skin<b>Lab</b></span><i></i><small>by Baiden<br>Creatives</small></a>
-  <nav class="nav" aria-label="Main"><a href="#" id="nv-home">Home</a><a href="#explore" id="nv-shop">Shop</a><a href="/design/" id="nv-design">Design Studio</a><a href="#inspo" id="nv-inspo">Inspiration</a><a href="#contact" id="nv-contact">Contact</a></nav>
+  <nav class="nav" aria-label="Main"><a href="#" id="nv-home">Home</a><a href="#explore" id="nv-shop">Shop</a><a href="#stickers" id="nv-pick">Build a pack</a><a href="/design/" id="nv-design">Design Studio</a><a href="#inspo" id="nv-inspo">Inspiration</a><a href="#contact" id="nv-contact">Contact</a></nav>
   <div class="hicons">
   <a class="hic" href="#search" aria-label="Search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></a>
   <a class="hic" href="#account" id="hd-acc" aria-label="Your account"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></a>
@@ -953,7 +963,7 @@ footer{display:block;margin-top:56px;padding-top:28px;border-top:1px solid var(-
 
 <script src="data.ddcc7775.js" defer></script>
 <script src="inspo.7391542c.js" defer></script>
-<script src="app.783eb9f8.js" defer></script>
+<script src="app.ceb1627e.js" defer></script>
 
 <script>if('serviceWorker'in navigator&&location.protocol==='https:'&&window.top===window){const had=!!navigator.serviceWorker.controller;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!sessionStorage.getItem('sl-upd')){try{sessionStorage.setItem('sl-upd','1')}catch(e){}location.reload()}});addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'}))}</script>
 </html>
