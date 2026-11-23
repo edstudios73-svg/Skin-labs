@@ -18,7 +18,11 @@ async function save(cat) {
 const dataImg = (d, max) => { const m = /^data:image\/(png|webp|jpeg);base64,/.exec(d || ''); if (!m) return null; const b = Buffer.from(d.slice(m[0].length), 'base64'); return b.length && b.length <= max ? { b, ext: m[1] === 'jpeg' ? 'jpg' : m[1], type: 'image/' + m[1] } : null; };
 const slug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) || 'pack';
 
+import skins from './_skins.js';
+export const config = { maxDuration: 60 };   // skin uploads are resized into every shop and print size here
+
 export default async function handler(req, res) {
+  if ((req.query || {}).kind === 'skins') return skins(req, res);   // /api/skins/, /skins/sk-* and /print/skins/sk-* (see vercel.json)
   if (req.method === 'GET') {
     const c = await load(); res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=20, stale-while-revalidate=300');
     res.statusCode = 200; res.setHeader('Content-Type', 'application/json'); return res.end(JSON.stringify({ packs: c.packs.filter(p => p.items.length) }));

@@ -1,4 +1,4 @@
-// /api/skins : laptop skins the owner adds from /admin (any number at once).
+// /api/skins (served by /api/catalog?kind=skins: the Hobby plan allows 12 functions) : laptop skins the owner adds from /admin (any number at once).
 // For every picture the server does the work: shapes it to a laptop lid (3:2), makes the shop sizes (2400 x 1600 and
 // 600 x 400, WebP + AVIF) and a 4800 x 3200 print master, checks print quality, suggests a name and a category, and
 // prices it by laptop size like every other skin. Nothing shows in the shop until the owner presses Publish.
@@ -10,7 +10,6 @@ import { put, del, list, putPrivate, getPrivate } from './_blob.js';
 import { json, isAdmin, limited, saveDoc, loadDocs, rid } from './_lib.js';
 import PR from './_prices.js';
 
-export const config = { maxDuration: 60, api: { bodyParser: { sizeLimit: '4.5mb' } } };
 export const TAGS = { heroes: 'Marvel & heroes', anime: 'Anime', code: 'Coding', cars: 'Cars', girly: 'Girly', street: 'Street', art: 'Art & nature' };
 export const FITS = { auto: 'Auto', crop: 'Fill the lid', rotate: 'Turn sideways', tile: 'Repeat across', whole: 'Whole picture' };
 // one record per skin (skins-db/<id>/doc-<time>.json): many uploads at once never overwrite each other

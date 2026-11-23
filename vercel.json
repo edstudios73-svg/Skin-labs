@@ -89,12 +89,20 @@
  ],
  "rewrites": [
   {
+   "source": "/api/skins",
+   "destination": "/api/catalog?kind=skins"
+  },
+  {
+   "source": "/api/skins/",
+   "destination": "/api/catalog?kind=skins"
+  },
+  {
    "source": "/skins/:f(sk-.*)",
-   "destination": "/api/skins?f=:f"
+   "destination": "/api/catalog?kind=skins&f=:f"
   },
   {
    "source": "/print/skins/:f(sk-.*)",
-   "destination": "/api/skins?f=print/skins/:f"
+   "destination": "/api/catalog?kind=skins&f=print/skins/:f"
   },
   {
    "source": "/o/:id/",
