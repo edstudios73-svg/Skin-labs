@@ -445,7 +445,7 @@ function prodCard(x, i = 9) {
   const q = x.kind === 'single' ? cart[x.id] : packs[x.kind === 'skin' ? skinKey(x.id) : x.kind === 'decal' ? `dc~${x.id}~b` : x.id];
   const sv = x.kind === 'pack' ? x.id : x.kind === 'skin' ? 'sk:' + x.id : x.kind === 'decal' ? 'dc:' + x.id : '';
   return `<article class="pc ${x.kind === 'skin' ? 'is-skin' : x.kind === 'decal' ? 'is-art' : ''}" data-key="${esc(x.key)}">
-    <div class="pc-im"><a class="pc-img" href="${x.href}" aria-label="${esc(x.name)}">${x.isNew ? '<span class="pc-tag">New</span>' : ''}${pic}</a>${sv ? heart(sv, x.name) : ''}</div>
+    <div class="pc-im"><a class="pc-img" href="${x.href}" aria-label="${esc(x.name)}">${x.isNew && !TOPPICK.has(x.id) ? '<span class="pc-tag">New</span>' : TOPPICK.has(x.id) ? '<span class="pc-tag pc-hot">Top pick</span>' : ''}${pic}</a>${sv ? heart(sv, x.name) : ''}</div>
     <div class="pc-meta"><span class="pc-cat">${esc(x.cat)}</span><a class="pc-name" href="${x.href}">${esc(x.name)}</a>
       <div class="pc-row"><span class="pc-price">${x.from ? 'from ' : ''}${CUR}${x.price}</span><span class="pc-note">${esc(x.note)}</span></div></div>
     <div class="pc-act"><a class="pc-btn pc-design" href="${x.design}">${x.kind === 'decal' ? 'See it on a laptop' : 'Design on my laptop'}</a>
@@ -476,17 +476,44 @@ const viewed = (n = 4, skip) => (store.get('sl-viewed', []) || []).filter(k => k
 // Add to cart / Get this look work on every page that shows product cards
 document.addEventListener('click', e => { const a = e.target.closest('[data-add]'); if (a) { e.preventDefault(); addProduct(a.dataset.add); return; } if (e.target.closest('[data-idea]')) { e.preventDefault(); openInspo(); } });
 function shopList(f) {
-  if (f === 'skins') return shopSkins().map(prodSkin);
+  if (f === 'skins') return byRank(shopSkins().map(prodSkin));
   if (f === 'art') return DECALS.map(prodDecal);
   if (f.startsWith('skin:')) return shopSkins().filter(x => SKTAG[x[0]] === f.slice(5)).map(prodSkin);
-  if (f === 'packs') return shopPacks().map(prodPack);
+  if (f === 'packs') return byRank(shopPacks().map(prodPack));
   if (f === 'singles') return shopSingles().map(prodSingle);
   if (CAT[f]) return CAT[f].packs.map(id => PK[id]).filter(Boolean).map(prodPack);
-  // everything: newest packs first, skins woven in so both show at once
-  const ps = shopPacks().map(prodPack), ss = shopSkins().map(prodSkin), out = [];
+  // everything: the hand-picked best first (coding, Spider-Man, realistic skins), mixed so the eye keeps moving,
+  // then the rest woven together (2 packs : 1 skin, Laptop Art every few rows), the plainest designs last
+  const items = [...shopPacks().map(prodPack), ...shopSkins().map(prodSkin), ...DECALS.map(prodDecal)];
+  const top = FEED.map(id => items.find(x => x.id === id)).filter(Boolean), last = FEED_LAST.map(id => items.find(x => x.id === id)).filter(Boolean);
+  const used = new Set([...top, ...last]), rest = items.filter(x => !used.has(x)), ps = rest.filter(x => x.kind === 'pack'), ss = rest.filter(x => x.kind === 'skin'), ds = rest.filter(x => x.kind === 'decal'), mid = [];
   ps.sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
-  for (let i = 0, j = 0; i < ps.length || j < ss.length;) { if (i < ps.length) out.push(ps[i++]); if (i < ps.length) out.push(ps[i++]); if (j < ss.length) out.push(ss[j++]); }
-  return [...out, ...DECALS.map(prodDecal)];
+  for (let i = 0, j = 0, k = 0; i < ps.length || j < ss.length || k < ds.length;) { for (let n = 0; n < 2 && i < ps.length; n++) mid.push(ps[i++]); if (j < ss.length) mid.push(ss[j++]); if (k < ds.length && (mid.length % 9 < 3 || (i >= ps.length && j >= ss.length))) mid.push(ds[k++]); }   // Laptop Art every few rows; never stalls
+  return [...top, ...mid, ...last];
+}
+// the order people see on the home page: best first. Ids of packs and skins; anything not listed comes in the middle.
+const FEED = ['ph-spidey-comics', 'p10-stack-and-logos', 'ph-coding', 'p3-code-languages-1', 'ph-porsche93', 'm2-spider-verse', 'ph-cute-hacker', 'p1-hacker-mode',
+  'ph-rose-gold-marble', 'p2-ai-vibe-coding', 'ph-spidey-collage', 'm1-marvel-avengers', 'ph-amg-red', 'p4-code-languages-2', 'ph-kali', 'g1-gta-rockstar',
+  'ph-silver-butterflies', 'p6-dev-jokes-1', 'ph-miles', 'an5-one-piece', 'ph-peaky', 'p12-code-and-chaos', 'ph-circuit', 'c1-marvel-chibis',
+  'ph-blue-neon-shards', 'p11-database-backend', 'ph-heisenberg', 'v1-car-badges', 'ph-gojo', 'p5-code-languages-3', 'ph-panther', 'k1-sneakerhead-1',
+  'ph-code-reaper', 'p7-dev-jokes-2', 'ph-spidey-scrapbook', 'an1-anime-legends', 'ph-tanjiro', 'p9-dev-life', 'ph-avengers', 'c2-cartoon-chaos',
+  'ph-galaxy', 'p8-dev-jokes-3', 'ph-jinx', 'an3-akatsuki', 'ph-joker-ink', 'f1-club-crests-i', 'ph-batman', 'gz2-girls-who-code',
+  'ph-popbomb', 's1-street-culture', 'ph-starry', 'g3-gamer-mode', 'ph-waterfall', 'q2-gen-z-ghana', 'ph-coder-bomb', 'm4-spidey-pop',
+  'ph-marvel', 'an4-monkey-d-luffy', 'ph-tech-logos', 'v2-jdm-and-euro', 'ph-spider-logo', 'k3-nba-classics', 'ph-mountains', 'g2-warzone-cod', 'ph-reality', 'an7-my-hero-academia'];
+const FEED_LAST = ['ph-stay-focused', 'ph-wasd', 'ph-panda', 'ph-graffiti', 'ph-girlpower', 'ph-heart-fluffy', 'ph-heart-pink', 'ph-pink', 'ph-rose',
+  'emoji-mood', 'g8-ghost-chibi', 'g7-pubg', 's4-retro-tape', 'm3-spider-man', 'v4-bmw-real', 'fc-barca-squad', 'g10-fc-playstyles', 'xl-fc-mobile-mono', 'xl-gold-strength', 'xl-efootball',
+  'fc-mobile-cards-1', 'fc-mobile-cards-2', 'fc-madrid-squad'];
+const RANK = new Map([...FEED.map((id, i) => [id, i]), ...FEED_LAST.map((id, i) => [id, 1e4 + i])]), rankOf = x => RANK.has(x.id) ? RANK.get(x.id) : 5e3;
+const TOPPICK = new Set(FEED.slice(0, 16));
+const byRank = list => list.map((x, i) => [x, i]).sort((a, b) => rankOf(a[0]) - rankOf(b[0]) || a[1] - b[1]).map(a => a[0]);
+// cards between the products that invite people to make their own: placed after these positions in the home feed
+const PROMOS = [[12, { t: 'Your laptop.<br><em>Your design.</em>', s: 'Pick your exact laptop, try any skin and stickers in 3D, see it before you buy.', a: 'Open Design Studio', h: '/design/', imgs: ['ph-spidey-comics', 'ph-porsche93', 'ph-coding'] }],
+  [36, { t: 'Your photo,<br><em>on your laptop.</em>', s: 'Upload any picture and we print it as a skin cut to your model. Lid, keyboard, trackpad, bottom.', a: 'Use my picture', h: '/design/?upload=1', imgs: ['ph-rose-gold-marble', 'ph-silver-butterflies', 'ph-blue-neon-shards'] }],
+  [60, { t: 'A free sticker<br><em>with every order.</em>', s: 'Pick it in your cart. Printed in Accra, ready for pickup or delivery.', a: 'Start designing', h: '/design/', imgs: ['ph-cute-hacker', 'ph-miles', 'ph-gojo'] }],
+  [96, { t: 'Can’t find<br><em>your vibe?</em>', s: 'Tell us the idea. We design it, you approve it, we print it.', a: 'Send us your idea', idea: 1, imgs: ['ph-kali', 'ph-peaky', 'ph-amg-red'] }]];
+function promoCard(p) {
+  return `<article class="pc pc-promo"><div class="pp-pics">${p.imgs.map((id, i) => `<img src="skins/${id}-s.${IX}" alt="" loading="lazy" decoding="async" style="--i:${i}">`).join('')}</div>
+    <div class="pp-txt"><b class="pp-t">${p.t}</b><span class="pp-s">${p.s}</span><a class="pp-a" href="${p.idea ? '#' : p.h}" ${p.idea ? 'data-idea="1"' : ''}>${p.a} →</a></div></article>`;
 }
 // the home gallery: everything at once (rendered in chunks as you scroll), filtered by the category chips and the search box
 let SHOPQ = '', SHOPIO = null;
@@ -500,7 +527,7 @@ function shopGrid() {
   if (SHOPIO) SHOPIO.disconnect();
   $('#g-count').textContent = `${all.length} ${all.length === 1 ? 'design' : 'designs'}${SHOPQ ? ` for “${SHOPQ}”` : ''}`;
   if (!all.length) { g.innerHTML = `<div class="pc-empty"><b>Nothing found${SHOPQ ? ` for “${esc(SHOPQ)}”` : ''}</b><span>Try another word or category, or <a href="#" data-idea="1">send us your idea</a> and we'll make it.</span></div>`; return; }
-  g.innerHTML = ''; const more = () => { g.insertAdjacentHTML('beforeend', all.slice(n, n + 24).map((x, i) => prodCard(x, n + i)).join('')); n += 24; if (n >= all.length && SHOPIO) SHOPIO.disconnect(); };
+  g.innerHTML = ''; const promos = SHOPF === 'all' && !SHOPQ ? PROMOS : [], more = () => { g.insertAdjacentHTML('beforeend', all.slice(n, n + 24).map((x, i) => { const pr = promos.find(([at]) => at === n + i); return (pr ? promoCard(pr[1]) : '') + prodCard(x, n + i); }).join('')); n += 24; if (n >= all.length && SHOPIO) SHOPIO.disconnect(); };
   more(); const end = $('#g-end');
   if (n < all.length && end && 'IntersectionObserver' in window) { SHOPIO = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { more(); if (n < all.length) { SHOPIO.unobserve(end); SHOPIO.observe(end); } } }, { rootMargin: '1500px 0px' }); SHOPIO.observe(end); }   // re-observing re-checks, so loading never stalls
   else while (n < all.length) more();
