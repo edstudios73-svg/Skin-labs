@@ -153,6 +153,15 @@
    "source": "https://www.acer.com/ca-en/laptops/nitro/nitro-5/pdp/NH.QFJAA.003",
    "checked": "2026-11-22",
    "note": ""
+  },
+  "lenovo-thinkpad-x13-yoga-gen-2": {
+   "status": "confirmed",
+   "w_cm": 30.5,
+   "d_cm": 21.39,
+   "t_mm": 15.39,
+   "source": "https://psref.lenovo.com/syspool/Sys/PDF/ThinkPad/ThinkPad_X13_Yoga_Gen_2_Intel/ThinkPad_X13_Yoga_Gen_2_Intel_Spec.pdf",
+   "checked": "2026-11-24",
+   "note": "Lenovo PSREF: 305 x 213.9 x 15.39 mm, 13.3\", Storm Grey"
   }
  }
 }
