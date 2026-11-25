@@ -965,5 +965,9 @@ footer{display:block;margin-top:56px;padding-top:28px;border-top:1px solid var(-
 <script src="inspo.7391542c.js" defer></script>
 <script src="app.ceb1627e.js" defer></script>
 
-<script>if('serviceWorker'in navigator&&location.protocol==='https:'&&window.top===window){const had=!!navigator.serviceWorker.controller;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!sessionStorage.getItem('sl-upd')){try{sessionStorage.setItem('sl-upd','1')}catch(e){}location.reload()}});addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'}))}</script>
+<script>/* always show the newest version: reload once when a new version takes over (not just once per session), check for one whenever the app comes back to the front, and never show a page iOS restored from memory */
+if('serviceWorker'in navigator&&location.protocol==='https:'&&window.top===window){const had=!!navigator.serviceWorker.controller;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!had)return;let t=0;try{t=+sessionStorage.getItem('sl-upd')||0}catch(e){}if(Date.now()-t<15000)return;try{sessionStorage.setItem('sl-upd',String(Date.now()))}catch(e){}location.reload()});
+let reg=null;addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'}).then(r=>{reg=r}).catch(()=>{}));
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&reg)reg.update().catch(()=>{})})}
+addEventListener('pageshow',e=>{if(e.persisted)location.reload()});</script>
 </html>
