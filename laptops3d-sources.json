@@ -162,6 +162,15 @@
    "source": "https://psref.lenovo.com/syspool/Sys/PDF/ThinkPad/ThinkPad_X13_Yoga_Gen_2_Intel/ThinkPad_X13_Yoga_Gen_2_Intel_Spec.pdf",
    "checked": "2026-11-24",
    "note": "Lenovo PSREF: 305 x 213.9 x 15.39 mm, 13.3\", Storm Grey"
+  },
+  "hp-elitebook-x360-830-g8": {
+   "status": "confirmed",
+   "w_cm": 30.75,
+   "d_cm": 20.5,
+   "t_mm": 17.9,
+   "source": "https://gzhls.at/blob/ldb/9/0/2/0/cb6537d584bbcb79cffae781a28e2ef613fa.pdf",
+   "checked": "2026-11-25",
+   "note": "HP datasheet: 30.75 x 20.5 x 1.79 cm, 13.3\", silver convertible"
   }
  }
 }

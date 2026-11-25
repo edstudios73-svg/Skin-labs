@@ -361,9 +361,12 @@ function vPick() {
     // the name Windows / macOS shows ("HP 250 15.6 inch G9 Notebook PC") also works: filler words are skipped, sizes match the screen
     const STOP = new Set(['inch', 'in', 'notebook', 'pc', 'laptop', 'computer', 'series', 'the', '-', 'with']);
     const words = q.toLowerCase().replace(/["″”]/g, ' ').replace(/(\d)-?inch/g, '$1').split(/\s+/).filter(w => w && !STOP.has(w));
-    const r = LAPS.filter(l => { if ((fTag && !l.tags.includes(fTag)) || (fBrand && l.brand !== fBrand)) return false; const hay = (l.brand + ' ' + l.name).toLowerCase(), tight = hay.replace(/[^a-z0-9.]+/g, '');   // 'Gen2' finds 'Gen 2'
-      return words.every(w => hay.includes(w) || tight.includes(w.replace(/[^a-z0-9.]+/g, '')) || (/^\d{2}(\.\d)?$/.test(w) && Math.abs(+w - l.scr) < .15)); });
-    $('#cnt').textContent = `${r.length} match${r.length === 1 ? '' : 'es'}`;
+    const hits = l => { if ((fTag && !l.tags.includes(fTag)) || (fBrand && l.brand !== fBrand)) return -1; const hay = (l.brand + ' ' + l.name).toLowerCase(), tight = hay.replace(/[^a-z0-9.]+/g, '');   // 'Gen2' finds 'Gen 2'
+      return words.filter(w => hay.includes(w) || tight.includes(w.replace(/[^a-z0-9.]+/g, '')) || (/^\d{2}(\.\d)?$/.test(w) && Math.abs(+w - l.scr) < .15)).length; };
+    let r = LAPS.filter(l => hits(l) === words.length), near = false;
+    // a typo ('830 GB' for '830 G8') should not end in nothing: show the models that match every word but one
+    if (!r.length && words.length >= 3) { const sc = LAPS.map(l => [l, hits(l)]).filter(([, n]) => n >= words.length - 1); r = sc.map(x => x[0]); near = r.length > 0; }
+    $('#cnt').textContent = near ? `No exact match · ${r.length} close match${r.length === 1 ? '' : 'es'}` : `${r.length} match${r.length === 1 ? '' : 'es'}`;
     $('#res').innerHTML = r.slice(0, shown).map(l => { const a = l.w / l.d, h = 36, w = Math.min(54, h * a);
       return `<button class="row" data-i="${l.i}"><span class="ic lp"><img src="${lapPic(l)}" alt="" loading="lazy" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement('span'),{style:'width:${w}px;height:${w / a}px;background:${LCOL[l.cols[0]]}'}))"></span>
       <span><b>${esc(lapTitle(l))}</b><span class="lbl">${l.scr}″ · ${l.w} × ${l.d} cm · ${l.t} mm</span></span>
