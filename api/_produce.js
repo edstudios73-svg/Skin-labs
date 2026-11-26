@@ -115,7 +115,7 @@ async function cutPDF(pages, s, meta) {   // pages: [{ W, H, png?, paths, marks 
   const doc = await PDFDocument.create(); doc.setTitle(pdfText(meta.title)); doc.setProducer('Skin Lab print production'); doc.setCreator('Skin Lab');
   const ctx = doc.context, tint = ctx.obj({ FunctionType: 2, Domain: [0, 1], C0: [0, 0, 0, 0], C1: [0, 1, 0, 0], N: 1 }), cs = ctx.register(ctx.obj([PDFName.of('Separation'), PDFName.of(s.spot), PDFName.of('DeviceCMYK'), ctx.register(tint)]));
   for (const pg of pages) { const page = doc.addPage([pg.W * MMPT, pg.H * MMPT]), Hp = pg.H * MMPT;
-    if (pg.png) { const im = await doc.embedPng(pg.png); page.drawImage(im, { x: (pg.ix || 0) * MMPT, y: Hp - ((pg.iy || 0) + (pg.ih || pg.H)) * MMPT, width: (pg.iw || pg.W) * MMPT, height: (pg.ih || pg.H) * MMPT }); }
+    if (pg.jpg || pg.png) { const im = pg.jpg ? await doc.embedJpg(pg.jpg) : await doc.embedPng(pg.png); page.drawImage(im, { x: (pg.ix || 0) * MMPT, y: Hp - ((pg.iy || 0) + (pg.ih || pg.H)) * MMPT, width: (pg.iw || pg.W) * MMPT, height: (pg.ih || pg.H) * MMPT }); }
     for (const m of pg.marks || []) page.drawRectangle({ x: m.x * MMPT, y: Hp - (m.y + m.h) * MMPT, width: m.w * MMPT, height: m.h * MMPT, color: rgb(0, 0, 0) });
     const res = page.node.Resources(); let csd = res.lookup(PDFName.of('ColorSpace')); if (!csd) { csd = ctx.obj({}); res.set(PDFName.of('ColorSpace'), csd); } csd.set(PDFName.of('CutCS'), cs);
     const ops = [pushGraphicsState(), PDFOperator.of(Ops.StrokingColorspace, [PDFName.of('CutCS')]), PDFOperator.of(Ops.StrokingColorN, [PDFNumber.of(1)]), setLineWidth(.25 * MMPT)];
@@ -252,17 +252,19 @@ export async function produce({ order: o, job, plan, base, settings = {}, assets
     const shift = p => p.map(([a, b]) => [a + B, b + B]), outline = shift(shapePts({ type: 'rect', x: 0, y: 0, w: x.w, h: x.h, r: x.r }, -(x.offset || 0))), holes = (x.cutouts || []).map(c => shift(shapePts(c, x.offset || 0)));
     if (it.kind === 'keyboard' && x.keyboard) {
       const keys = x.keyboard.keys.map(k => ({ k, p: shift(shapePts(k, -(x.offset || 0))) }));
-      add('09-KEYBOARD-ARTWORK/keyboard-deck.png', r.png, 'image/png');
+      const kjpg = await sharp(r.png).flatten({ background: '#ffffff' }).jpeg({ quality: 95, chromaSubsampling: '4:4:4', mozjpeg: true }).withMetadata({ density: s.dpi }).toBuffer();
+      add('09-KEYBOARD-ARTWORK/keyboard-deck.jpg', kjpg, 'image/jpeg', { note: `${x.w} x ${x.h} mm + ${B} mm bleed` });
       for (const [i, { k }] of keys.entries()) { const bb = k.pts ? (() => { const xs = k.pts.map(p => p[0]), ys = k.pts.map(p => p[1]); return { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) }; })() : k;
         const ex = { left: px(bb.x + B, s.dpi), top: px(bb.y + B, s.dpi), width: px(bb.w, s.dpi), height: px(bb.h, s.dpi) };
         add(`09-KEYBOARD-ARTWORK/keys/${String(i + 1).padStart(3, '0')}-${safe(KEYN[k.label] || k.label)}.png`, await sharp(r.png).extract(ex).png().withMetadata({ density: s.dpi }).toBuffer(), 'image/png'); }
       const paths = [outline, ...holes, ...keys.map(k => k.p)]; kbPaths.push(...paths);
-      kbPages.push({ W: x.w + 2 * B, H: x.h + 2 * B, png: r.png, paths, marks: [], keys: keys.length });
+      kbPages.push({ W: x.w + 2 * B, H: x.h + 2 * B, jpg: kjpg, paths, marks: [], keys: keys.length });
       check('Keyboard: individual key cut paths', keys.length > 0 && keys.every(k => closedOk(k.p)), `${keys.length} keys, each its own closed path (${x.keyboard.layout})`);
     } else {
-      add(`06-LAPTOP-SKIN-ARTWORK/${it.surface}-${safe(name)}.png`, r.png, 'image/png', { note: `${x.w} x ${x.h} mm + ${B} mm bleed` });
+      const sjpg = await sharp(r.png).flatten({ background: '#ffffff' }).jpeg({ quality: 95, chromaSubsampling: '4:4:4', mozjpeg: true }).withMetadata({ density: s.dpi }).toBuffer();
+      add(`06-LAPTOP-SKIN-ARTWORK/${it.surface}-${safe(name)}.jpg`, sjpg, 'image/jpeg', { note: `${x.w} x ${x.h} mm + ${B} mm bleed · print at 100%` });
       if (name === 'customer-artwork' && (await sharp(src.buf).metadata()).hasAlpha) add(`12-TRANSPARENT-ARTWORK/${it.surface}-customer-artwork.png`, await sharp(src.buf).png().toBuffer(), 'image/png');
-      const paths = [outline, ...holes]; skinPaths.push(...paths); skinPages.push({ W: x.w + 2 * B, H: x.h + 2 * B, png: r.png, paths, marks: [], surface: it.surface });
+      const paths = [outline, ...holes]; skinPaths.push(...paths); skinPages.push({ W: x.w + 2 * B, H: x.h + 2 * B, jpg: sjpg, paths, marks: [], surface: it.surface });
     }
     check(`${SN[it.surface]} cut paths closed`, [outline, ...holes].every(closedOk), `outline + ${holes.length} cutouts, offset ${x.offset || 0} mm`);
     check(`${SN[it.surface]} bleed`, B >= 0, `${B} mm`);
@@ -287,7 +289,7 @@ export async function produce({ order: o, job, plan, base, settings = {}, assets
   lines.push(['<b>Production notes</b>', 52]); lines.push([escM(o.note || 'None from the customer.'), 36]);
   const layers = []; let y = 140;
   for (const [m, size, big] of lines) { const im = await textImg(`<span foreground="#111111">${m}</span>`, W - 240, size, !!big); const mm = await sharp(im).metadata(); layers.push({ input: im, left: 120, top: y }); y += mm.height + (big ? 40 : 18); }
-  for (const p of [...sheetsOut.map(x => x.png), ...skinPages.map(x => x.png), ...kbPages.map(x => x.png)].slice(0, 6)) thumbs.push(await sharp(p).resize(700, 700, { fit: 'inside', background: '#ffffff' }).flatten({ background: '#ffffff' }).png().toBuffer());
+  for (const p of [...sheetsOut.map(x => x.png), ...skinPages.map(x => x.jpg || x.png), ...kbPages.map(x => x.jpg || x.png)].filter(Boolean).slice(0, 6)) thumbs.push(await sharp(p).resize(700, 700, { fit: 'inside', background: '#ffffff' }).flatten({ background: '#ffffff' }).png().toBuffer());
   let tx = 120, ty = Math.min(y + 40, H - 760); for (const t of thumbs) { const mm = await sharp(t).metadata(); if (tx + mm.width > W - 120) { tx = 120; ty += 740; } if (ty + mm.height > H - 60) break; layers.push({ input: t, left: tx, top: ty }); tx += mm.width + 40; }
   const general = await sharp({ create: { width: W, height: H, channels: 3, background: '#ffffff' } }).composite(layers).png().withMetadata({ density: 300 }).toBuffer();
   add('01-GENERAL-ORDER.png', general, 'image/png');
@@ -302,7 +304,7 @@ export async function produce({ order: o, job, plan, base, settings = {}, assets
   add('14-PRODUCTION-INSTRUCTIONS.pdf', await textPDF(`${o.id} production instructions`, howto), 'application/pdf');
 
   // ---- integrity + ZIP ----
-  for (const f of files) { try { if (f.type === 'image/png') await sharp(f.buf).metadata(); else if (f.type === 'application/pdf') await PDFDocument.load(f.buf); } catch (e) { check(`File ${f.name}`, false, 'file does not open: ' + e.message); } }
+  for (const f of files) { try { if (f.type === 'image/png' || f.type === 'image/jpeg') await sharp(f.buf).metadata(); else if (f.type === 'application/pdf') await PDFDocument.load(f.buf); } catch (e) { check(`File ${f.name}`, false, 'file does not open: ' + e.message); } }
   check('Files open and match their checksum', !checks.some(c => c.check.startsWith('File ') && !c.ok), `${files.length} files`);
   const zipIn = {}; for (const f of files) zipIn[`${root}/${f.name}`] = [new Uint8Array(f.buf), { level: f.type === 'image/png' ? 0 : 6 }];
   const zip = Buffer.from(zipSync(zipIn));

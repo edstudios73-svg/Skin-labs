@@ -257,7 +257,7 @@ async function tpl(key) {
 }
 // downloads: a fresh signed link each time. On a computer the file is streamed and its size + SHA-256 are checked;
 // on phones (or if that fails for any reason) the browser downloads the signed link itself, which works everywhere.
-const DLS = [['General order PNG', /^01-/], ['Transparent sheet (PNG)', /^03-STICKER-ARTWORK-TRANSPARENT\//], ['Sticker cutlines (PDF)', /^04-/], ['Lid skin artwork (PNG)', /^06-[^/]*\/lid-/], ['Laptop skin cutlines (PDF)', /^07-/], ['Keyboard deck artwork (PNG)', /^09-KEYBOARD-ARTWORK\/keyboard-deck/], ['Keyboard cutlines (PDF)', /^10-/], ['Production instructions', /^14-/]];
+const DLS = [['General order PNG', /^01-/], ['Transparent sheet (PNG)', /^03-STICKER-ARTWORK-TRANSPARENT\//], ['Sticker cutlines (PDF)', /^04-/], ['Lid skin artwork (JPG)', /^06-[^/]*\/lid-/], ['Laptop skin cutlines (PDF)', /^07-/], ['Keyboard deck artwork (JPG)', /^09-KEYBOARD-ARTWORK\/keyboard-deck/], ['Keyboard cutlines (PDF)', /^10-/], ['Production instructions', /^14-/]];
 const MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform));
 function nativeDl(d) { const a = Object.assign(document.createElement('a'), { href: d.url, download: d.name, rel: 'noopener' }); document.body.appendChild(a); a.click(); a.remove(); }
 async function download(id, name, btn) {
