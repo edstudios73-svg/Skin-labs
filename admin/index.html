@@ -109,6 +109,7 @@ textarea.msg{min-height:96px;font:14px/1.5 Geist,sans-serif;resize:vertical}
 .sti{position:relative;background:var(--s3);border-radius:var(--rad2);aspect-ratio:1;display:grid;place-items:center;padding:6px}.sti img{max-width:100%;max-height:100%;display:block}.sti button{position:absolute;top:3px;right:3px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.75);font-size:11px}
 .sti small{position:absolute;left:5px;bottom:3px;font-family:var(--mono);font-size:9px;color:#888}
 .np{display:grid;gap:8px}.np input{min-height:46px;background:var(--s1);border:1px solid var(--line2);border-radius:var(--rad2);color:#fff;padding:0 12px;font-size:15px;width:100%}.np input[type=color]{width:48px;min-height:32px;height:32px;padding:0;border:0}
+.pin{display:block;width:100%;min-height:46px;margin-top:5px;background:var(--s2);border:1px solid var(--line2);border-radius:var(--rad2);color:#fff;padding:0 12px;font:500 16px Geist,system-ui,sans-serif;text-transform:none;letter-spacing:0}
 .skh{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:26px 0 12px}.skh h3{margin:0}
 .drop{display:grid;gap:6px;place-items:center;text-align:center;border:1.5px dashed var(--line2);border-radius:var(--rad);padding:34px 16px;cursor:pointer;transition:border-color .2s,background .2s}.drop.over{border-color:var(--fg);background:var(--s2)}
 .drop input{display:none}.drop b{font-size:18px}.opts{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
@@ -523,9 +524,9 @@ async function payoutsView() {
       <div class="kpi ${d.balance === 0 ? 'y' : ''}"><span class="lbl">Paystack balance</span><b>${d.balance == null ? '–' : cedi(d.balance)}</b><small>transfers are paid from this</small></div></div>
     ${d.balance === 0 ? `<div class="alert" style="display:block;margin-top:12px"><b>Your Paystack balance is GH₵0.</b> Customer payments go straight to your bank, so there is nothing to pay the printer from. In Paystack: <b>Settings → Payouts</b> (settlement) choose to keep payments in your <b>Paystack balance</b>, or top up the balance. Payouts wait until there is money, then send by themselves.</div>` : ''}
     <div class="panel" style="margin-top:16px;max-width:620px"><h2>Printer’s Mobile Money</h2>
-      <div style="display:grid;gap:10px"><label class="lbl">Name on the MoMo account<input id="pn2" class="msg" style="min-height:44px" value="${esc(st.name)}" placeholder="e.g. Michael ..." maxlength="60"></label>
+      <div style="display:grid;gap:10px"><label class="lbl">Name on the MoMo account<input id="pn2" class="pin" value="${esc(st.name)}" placeholder="e.g. Michael ..." maxlength="60"></label>
         <label class="lbl">Network<select id="pnet">${Object.entries(d.networks).map(([k, n]) => `<option value="${k}" ${k === st.network ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
-        <label class="lbl">Mobile Money number<input id="pnum" class="msg" style="min-height:44px" inputmode="numeric" placeholder="${st.hasNumber ? 'saved: ' + esc(st.number) + ' (type to change)' : '024 123 4567'}"></label>
+        <label class="lbl">Mobile Money number<input id="pnum" class="pin" inputmode="numeric" placeholder="${st.hasNumber ? 'saved: ' + esc(st.number) + ' (type to change)' : '024 123 4567'}"></label>
         ${st.verifiedName ? `<p class="note">Paystack says this number belongs to <b>${esc(st.verifiedName)}</b>.</p>` : ''}
         <label class="ck" style="font-size:15px"><input type="checkbox" id="pon" ${st.enabled ? 'checked' : ''}> Pay the printer automatically for every new paid order</label>
         ${st.enabledAt ? `<p class="lbl">On since ${when(st.enabledAt)}. Earlier orders: use “Pay printer” below.</p>` : ''}
