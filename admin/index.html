@@ -179,14 +179,14 @@ async function load(isFirst) {
     else if (view === 'orders' && !$('.dv')) list(); else badge();
   } catch (e) { if (e.code === 401) { ls('sl-admin', null); login('Wrong password'); } else if (isFirst) login(e.message); }
 }
-function route(h) { if (h === 'skins' && ROLE === 'owner') skinsView(); else if (h === 'stickers' && ROLE === 'owner') stickers(); else if (h === 'pricing' && ROLE === 'owner') pricing(); else if (h === 'payments') payments(); else if (h === 'support') support(true); else if (h === 'reviews') reviewsView(true); else { list(); if (/^SL-/.test(h)) open(h); } }
+function route(h) { if (h === 'payouts' && ROLE === 'owner') payoutsView(); else if (h === 'skins' && ROLE === 'owner') skinsView(); else if (h === 'stickers' && ROLE === 'owner') stickers(); else if (h === 'pricing' && ROLE === 'owner') pricing(); else if (h === 'payments') payments(); else if (h === 'support') support(true); else if (h === 'reviews') reviewsView(true); else { list(); if (/^SL-/.test(h)) open(h); } }
 function ding() { try { const c = new (window.AudioContext || window.webkitAudioContext)(), o = c.createOscillator(), g = c.createGain(); o.frequency.value = 880; o.connect(g); g.connect(c.destination); g.gain.setValueAtTime(.2, c.currentTime); g.gain.exponentialRampToValueAtTime(.001, c.currentTime + .6); o.start(); o.stop(c.currentTime + .6); } catch (e) {} try { navigator.vibrate && navigator.vibrate([80, 60, 80]); } catch (e) {} }
 function badge() { const n = orders.filter(o => o.status === 'new').length; document.title = (n ? `(${n}) ` : '') + 'Orders · Skin Lab admin'; }
 
 // ---------- top bar ----------
 const topbar = v => { const nNew = orders.filter(o => o.status === 'new').length, nOpen = tickets ? tickets.filter(t => t.status !== 'resolved').length : 0, nRev = reviews ? reviews.filter(r => r.status === 'pending').length : 0;
   return `<header class="top"><div class="row"><b class="brand">Skin Lab<span>admin</span></b><div class="me"><a class="ib" href="/production/" style="text-decoration:none">Print Production</a><span class="who" title="Changes are recorded under this name">${esc(ME())}${ROLE !== 'owner' ? ` · ${ROLE}` : ''}</span><button class="ib" id="lo" aria-label="Log out">Log out</button></div></div>
-  <nav class="nav" aria-label="Sections">${[['orders', 'Orders', nNew], ['payments', 'Payments', 0], ['support', 'Support', nOpen], ['reviews', 'Reviews', nRev], ...(ROLE === 'owner' ? [['pricing', 'Pricing', 0], ['stickers', 'Stickers', 0], ['skins', 'Skins', 0]] : [])].map(([k, n, c]) => `<button class="${v === k ? 'on' : ''}" data-v="${k}">${n}${c ? `<i>${c}</i>` : ''}</button>`).join('')}</nav></header>`; };
+  <nav class="nav" aria-label="Sections">${[['orders', 'Orders', nNew], ['payments', 'Payments', 0], ['support', 'Support', nOpen], ['reviews', 'Reviews', nRev], ...(ROLE === 'owner' ? [['pricing', 'Pricing', 0], ['payouts', 'Printer pay', 0], ['stickers', 'Stickers', 0], ['skins', 'Skins', 0]] : [])].map(([k, n, c]) => `<button class="${v === k ? 'on' : ''}" data-v="${k}">${n}${c ? `<i>${c}</i>` : ''}</button>`).join('')}</nav></header>`; };
 function wireTop() {
   app.querySelector('.nav').onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; history.replaceState(null, '', b.dataset.v === 'orders' ? location.pathname : '#' + b.dataset.v); route(b.dataset.v); };
   $('#lo').onclick = () => { if (!confirm('Log out of the admin?')) return; ls('sl-admin', null); login(); };
@@ -506,6 +506,39 @@ function drawStickers() {
   box.querySelectorAll('[data-dels]').forEach(b => b.onclick = async () => { if (!confirm(`Delete sticker ${b.dataset.dels}?`)) return; await api('/api/catalog/', { method: 'POST', body: JSON.stringify({ action: 'del-sticker', code: b.dataset.dels }) }); toast('Deleted'); stickers(); });
   box.querySelectorAll('[data-delp]').forEach(b => b.onclick = async () => { const p = drops.find(x => x.id === b.dataset.delp); if (!confirm(`Delete the whole pack “${p.name}” (${p.items.length} stickers)?`)) return; await api('/api/catalog/', { method: 'POST', body: JSON.stringify({ action: 'del-pack', packId: p.id }) }); toast('Pack deleted'); stickers(); });
   box.querySelectorAll('[data-sheet]').forEach(b => b.onclick = async () => { const p = drops.find(x => x.id === b.dataset.sheet); b.textContent = 'Making…'; try { const sh = await makeSheet(p); await api('/api/catalog/', { method: 'POST', body: JSON.stringify({ action: 'sheet', packId: p.id, img: sh.img, w: sh.w, h: sh.h }) }); toast('Sheet updated'); stickers(); } catch (x) { toast(x.message); b.textContent = 'Remake sheet'; } });
+}
+
+// ---------- printer payouts (owner only): each paid order's printer cost goes to the printer's Mobile Money via Paystack ----------
+const PAYOUT_ST = { success: ['paid', '✓ Sent'], pending: ['new', 'Sending'], processing: ['new', 'Sending'], waiting: ['unpaid', 'Waiting for balance'], failed: ['unpaid', 'Failed'], reversed: ['unpaid', 'Reversed'], 'needs-otp': ['unpaid', 'Needs OTP off'] };
+async function payoutsView() {
+  view = 'payouts'; app.innerHTML = `${topbar('payouts')}<div class="w"><span class="lbl">Paystack transfers</span><h1>Printer <em>pay.</em></h1><div id="po" class="lbl" style="margin-top:20px">Loading…</div></div>`; wireTop();
+  let d; try { d = await api('/api/admin/?a=payouts'); } catch (e) { $('#po').textContent = e.message; return; }
+  const st = d.settings, sent = d.payouts.filter(p => p.status === 'success'), owed = d.payouts.filter(p => ['waiting', 'failed', 'needs-otp', 'reversed'].includes(p.status));
+  const sum = a => a.reduce((x, p) => x + (+p.amount || 0), 0), prof = a => a.reduce((x, p) => x + (+p.profit || 0), 0);
+  $('#po').className = ''; $('#po').innerHTML = `
+    <p class="sub" style="max-width:70ch">For every paid order, the printer’s cost from your <a href="#pricing" style="color:#fff">price calculator</a> is sent to his Mobile Money through Paystack, with the order number as the reference (“Skin Lab SL-XXXXX printing”). The rest stays with you.</p>
+    <div class="kpis"><div class="kpi g"><span class="lbl">Sent to printer</span><b>${cedi(sum(sent))}</b><small>${sent.length} order${sent.length === 1 ? '' : 's'}</small></div>
+      <div class="kpi"><span class="lbl">Your profit on those</span><b>${cedi(prof(sent))}</b><small>after printer and Paystack fee</small></div>
+      <div class="kpi ${owed.length ? 'r' : ''}"><span class="lbl">Not sent yet</span><b>${cedi(sum(owed))}</b><small>${owed.length} waiting or failed</small></div>
+      <div class="kpi ${d.balance === 0 ? 'y' : ''}"><span class="lbl">Paystack balance</span><b>${d.balance == null ? '–' : cedi(d.balance)}</b><small>transfers are paid from this</small></div></div>
+    ${d.balance === 0 ? `<div class="alert" style="display:block;margin-top:12px"><b>Your Paystack balance is GH₵0.</b> Customer payments go straight to your bank, so there is nothing to pay the printer from. In Paystack: <b>Settings → Payouts</b> (settlement) choose to keep payments in your <b>Paystack balance</b>, or top up the balance. Payouts wait until there is money, then send by themselves.</div>` : ''}
+    <div class="panel" style="margin-top:16px;max-width:620px"><h2>Printer’s Mobile Money</h2>
+      <div style="display:grid;gap:10px"><label class="lbl">Name on the MoMo account<input id="pn2" class="msg" style="min-height:44px" value="${esc(st.name)}" placeholder="e.g. Michael ..." maxlength="60"></label>
+        <label class="lbl">Network<select id="pnet">${Object.entries(d.networks).map(([k, n]) => `<option value="${k}" ${k === st.network ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+        <label class="lbl">Mobile Money number<input id="pnum" class="msg" style="min-height:44px" inputmode="numeric" placeholder="${st.hasNumber ? 'saved: ' + esc(st.number) + ' (type to change)' : '024 123 4567'}"></label>
+        ${st.verifiedName ? `<p class="note">Paystack says this number belongs to <b>${esc(st.verifiedName)}</b>.</p>` : ''}
+        <label class="ck" style="font-size:15px"><input type="checkbox" id="pon" ${st.enabled ? 'checked' : ''}> Pay the printer automatically for every new paid order</label>
+        ${st.enabledAt ? `<p class="lbl">On since ${when(st.enabledAt)}. Earlier orders: use “Pay printer” below.</p>` : ''}
+        <button class="btn" id="psave" style="background:var(--fg);color:#000">Save</button></div></div>
+    <div class="panel" style="margin-top:16px"><h2>Payouts</h2>${d.payouts.length ? `<div class="rows">${d.payouts.map(p => { const [c, t] = PAYOUT_ST[p.status] || ['new', p.status];
+      return `<div><span><b>${esc(p.id)}</b> · ${cedi(p.amount)} to ${esc(p.to || 'printer')}<br><small>${when(p.at)} · ref ${esc(p.ref)}${p.msg ? ' · ' + esc(p.msg) : ''}${p.lines ? ' · ' + esc(p.lines.map(l => `${l.label} ${cedi(l.cost)}`).join(', ')) : ''}</small></span>
+        <span class="pills"><span class="pill ${c}">${t}</span>${['waiting', 'failed', 'needs-otp', 'reversed'].includes(p.status) ? `<button class="ib" data-pay="${esc(p.id)}">Retry</button>` : ''}</span></div>`; }).join('')}</div>` : '<p class="lbl">No payouts yet.</p>'}</div>
+    <div class="panel" style="margin-top:16px"><h2>Paid orders not paid out</h2>${d.todo.length ? `<div class="rows">${d.todo.map(o => `<div><span><b>${esc(o.id)}</b> · ${esc(o.name)}<br><small>paid ${cedi(o.total)} ${when(o.at)} · printer cost ${cedi(o.cost)}</small></span><button class="ib" data-pay="${esc(o.id)}" ${o.cost > 0 && st.ready ? '' : 'disabled'}>Pay printer ${cedi(o.cost)}</button></div>`).join('')}</div>` : '<p class="lbl">Every paid order is paid out.</p>'}</div>`;
+  $('#psave').onclick = async () => { const b = $('#psave'); b.disabled = true; b.textContent = 'Checking with Paystack…';
+    try { const r = await post('payout-settings', { name: $('#pn2').value.trim(), network: $('#pnet').value, number: $('#pnum').value.trim(), enabled: $('#pon').checked }); toast(r.verifiedName ? `Saved · Paystack: ${r.verifiedName}` : 'Saved'); payoutsView(); }
+    catch (x) { toast(x.message); b.disabled = false; b.textContent = 'Save'; } };
+  $('#po').querySelectorAll('[data-pay]').forEach(b => b.onclick = async () => { const id = b.dataset.pay; if (!confirm(`Send the printer's cost for ${id} to his Mobile Money now?`)) return; b.disabled = true; b.textContent = 'Sending…';
+    try { const r = await post('payout', { id }); toast(r.payout ? `${id}: ${(PAYOUT_ST[r.payout.status] || [, r.payout.status])[1]}` : (r.skipped || 'Done')); payoutsView(); } catch (x) { toast(x.message); b.disabled = false; } });
 }
 
 // ---------- skins (owner only): drop in any number of pictures; the server shapes, sizes, names and prices each one ----------

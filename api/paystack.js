@@ -16,6 +16,7 @@ export default async function handler(req, res) {
   if (wk && crypto.createHmac('sha512', wk).update(body).digest('hex') !== req.headers['x-paystack-signature']) return json(res, 401, { error: 'bad signature' });
   let ev = {}; try { ev = JSON.parse(body.toString()); } catch (e) {}
   if (ev.event === 'charge.success') await confirmPayment(ev.data && ev.data.reference).catch(() => null);
+  if (/^transfer\.(success|failed|reversed)$/.test(ev.event || '')) await import('./_payout.js').then(m => m.transferEvent(ev)).catch(() => null);   // printer payouts
   if (/^refund\.(processed|failed)$/.test(ev.event || '')) {   // a refund only counts once Paystack says it went through
     const ref = String((ev.data && (ev.data.transaction_reference || (ev.data.transaction && ev.data.transaction.reference))) || '');
     const f = /^SL-[2-9A-Z]{5}-/.test(ref) ? await findOrder(ref.slice(0, 8)) : null;

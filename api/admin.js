@@ -24,6 +24,12 @@ export default async function handler(req, res) {
         .map(([name, sell, w, h, kind = 'sticker', n = 1]) => { const c = cost(s, w, h, n, kind); return { name, sell, w, h, n, sheet: c.sheet, cost: c.cost, calc: c.calc, profit: Math.round((sell - c.cost - s.extra) * 100) / 100, margin: Math.round((1 - (c.cost + s.extra) / sell) * 100), x: Math.round(sell / (c.cost + s.extra) * 10) / 10 }; });
       return json(res, 200, { settings: s, shop, example: q.w ? price(s, q.w, q.h, q.q, q.kind) : null });
     }
+    if (q.a === 'payouts') {   // owner only: printer payouts (settings with the number masked, history, unpaid orders)
+      if (who !== 'owner') return json(res, 403, { error: 'Only the owner sees printer payouts' });
+      const P = await import('./_payout.js'), set = await P.payoutSettings(), list = await P.listPayouts(), orders = (await allOrders()).filter(o => o.paid && o.paid.verifiedAt && !o.payout && !['refunded', 'cancelled'].includes(o.status)).slice(0, 30);
+      const todo = await Promise.all(orders.map(async o => ({ id: o.id, name: o.name, at: o.paid.at, total: o.paid.amount, cost: (await P.printerCost(o)).total })));
+      return json(res, 200, { settings: { name: set.name || '', network: set.network || 'MTN', number: set.number ? set.number.slice(0, 3) + '****' + set.number.slice(-3) : '', hasNumber: !!set.number, verifiedName: set.verifiedName || '', enabled: !!set.enabled, enabledAt: set.enabledAt || null, ready: !!set.recipient },
+        networks: P.NETWORKS, payouts: list, todo, balance: await paystack('/balance').then(b => ((b || []).find(x => x.currency === 'GHS') || {}).balance / 100).catch(() => null) }); }
     if (q.a === 'orders') return json(res, 200, { orders: await allOrders(), push: !!process.env.VAPID_PUBLIC, pay: payOn() });
     if (q.a === 'tickets') return json(res, 200, { tickets: await loadDocs('support/') });
     if (q.a === 'reviews') return json(res, 200, { reviews: await loadDocs('reviews/') });
@@ -50,6 +56,11 @@ export default async function handler(req, res) {
   }
   if (req.method !== 'POST') return json(res, 405, { error: 'GET or POST' });
   const b = req.body || {};
+  if (b.a === 'payout-settings' || b.a === 'payout') {
+    if (who !== 'owner') return json(res, 403, { error: 'Only the owner manages printer payouts' }); const P = await import('./_payout.js');
+    try { if (b.a === 'payout-settings') { const set = await P.savePayoutSettings(b, by); return json(res, 200, { ok: true, enabled: set.enabled, verifiedName: set.verifiedName || '', ready: !!set.recipient }); }
+      const id = String(b.id || ''); if (!/^SL-[2-9A-Z]{5}$/.test(id)) return json(res, 400, { error: 'Bad order id' });
+      return json(res, 200, await P.payOrder(id, { manual: true, by })); } catch (e) { return json(res, 400, { error: e.message }); } }
   if (b.a === 'pricing') { if (who !== 'owner') return json(res, 403, { error: 'Only the owner changes costs' }); return json(res, 200, { settings: await saveSettings(b.settings || {}, by) }); }
   if (b.a === 'push-test') return json(res, 200, { result: await pushAll({ title: 'Skin Lab · test', body: 'Notifications are on. New orders will show up like this.', url: '/admin/', tag: 'test' }) });
   if (b.a === 'sync') {   // re-check one payment with Paystack (if the webhook was missed)
