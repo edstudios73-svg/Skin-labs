@@ -220,7 +220,7 @@ function list() {
 // The order's own print files (made by Print Production): transparent PNG sheet + package, sheet with marks, cut lines.
 // Each button asks for a fresh 15-minute link and lets the phone's browser download it (works on iPhone and Android).
 const PF = [['Transparent sheet (PNG)', f => /^03-STICKER-ARTWORK-TRANSPARENT\//.test(f.name), 1], ['Transparent PNG package (ZIP)', f => f.pkg === 'transparent', 1],
-  ['Print sheet with marks (PNG)', f => /^03-STICKER-ARTWORK\//.test(f.name)], ['Cut lines (PDF)', f => /^04-/.test(f.name)], ['Skin artwork (PDF)', f => /^06-|^07-/.test(f.name)], ['Everything (ZIP)', f => f.zip]];
+  ['Print sheet with marks (PNG)', f => /^03-STICKER-ARTWORK\//.test(f.name)], ['Sticker cut lines (PDF)', f => /^04-/.test(f.name)], ['Lid skin artwork, print size (PNG)', f => /^06-[^/]*\/lid-/.test(f.name), 1], ['Lid skin cut lines (PDF)', f => /^07-/.test(f.name), 1], ['Keyboard deck artwork (PNG)', f => /^09-KEYBOARD-ARTWORK\/keyboard-deck/.test(f.name), 1], ['Keyboard key cut lines (PDF)', f => /^10-/.test(f.name), 1], ['Trackpad / bottom skin', f => /^06-[^/]*\/(pad|bot)-/.test(f.name)], ['Everything (ZIP)', f => f.zip]];
 async function printFiles(id, again) {
   const box = document.getElementById('rp'); if (!box) return;
   let j; try { j = (await api(`/api/production/?a=job&id=${encodeURIComponent(id)}`)).job; } catch (e) { box.innerHTML = `<h2>Ready-to-print files</h2><p class="lbl">${esc(e.message)}</p>`; return; }

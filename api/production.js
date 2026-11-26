@@ -3,7 +3,7 @@
 //   General Administrator  = owner / payments login: sees every job, its progress, files and checks. Never downloads files.
 //   Printing Administrator = printer login: everything above + downloads + moves the job through production.
 import { json, role, adminName, findOrder, saveOrder, allOrders, saveDoc, loadDoc, loadDocs, limited } from './_lib.js';
-import { templateFor, catalogue, checkTemplate } from './templates.js';
+import { templateFor, catalogue, checkTemplate, specTemplate } from './templates.js';
 import { baseOf, SITE } from './_lib.js';
 import { signPrivate } from './_blob.js';
 import { waitUntil } from '@vercel/functions';
@@ -18,10 +18,13 @@ export async function surfacePlan(req, job) {
   if (!job.surfaces.length) return { model: null, template: null, surfaces: {} };
   const { model, template } = job.laptop ? await templateFor(req, job.laptop) : { model: null, template: null };
   const ok = template && template.status === 'verified' && checkTemplate(template, model).ok, out = {};
-  for (const s of job.surfaces) { const x = ok && template.surfaces[s];
-    out[s] = x ? { ready: true, w: x.w, h: x.h, r: x.r, bleed: x.bleed, offset: x.offset, cutouts: (x.cutouts || []).length, keys: x.keyboard ? x.keyboard.keys.length : 0 }
+  // no verified template yet: a provisional one from the manufacturer's size, so the printer still gets files (marked provisional)
+  const spec = !ok && model ? specTemplate(model) : null, T = ok ? template : spec;
+  for (const s of job.surfaces) { const x = T && T.surfaces[s];
+    out[s] = x ? { ready: true, provisional: !ok, w: x.w, h: x.h, r: x.r, bleed: x.bleed, offset: x.offset, cutouts: (x.cutouts || []).length, keys: x.keyboard ? x.keyboard.keys.length : 0 }
       : { ready: false, why: !job.laptop ? 'Laptop model not given' : !model ? 'Model not found in the laptop catalogue' : !template ? 'No template for this model' : template.status !== 'verified' ? `Template v${template.version} is not verified` : `Template has no ${s} surface` }; }
-  return { model: model && { key: model.key, name: `${model.brand} ${model.name}`, w: model.w, d: model.d }, template: template && { version: template.version, status: template.status }, surfaces: out };
+  return { model: model && { key: model.key, name: `${model.brand} ${model.name}`, w: model.w, d: model.d }, provisional: !ok && !!spec, spec: spec || undefined,
+    template: ok ? { version: template.version, status: template.status } : spec ? { version: 0, status: 'provisional', draft: template ? { version: template.version, status: template.status } : null } : template && { version: template.version, status: template.status }, surfaces: out };
 }
 
 // What production needs to know about an order. Built from the paid order only.
@@ -80,7 +83,8 @@ export async function generate(base, id, by = 'System') {
   job.stage = 'generating'; job.failed = false; job.gen = { started: Date.now(), by }; job.log.push({ at: Date.now(), by, stage: 'generating' }); await saveDoc(`production/${id}`, job);
   try {
     const fakeReq = { headers: { host: new URL(base).host }, __base: base }, shop = await shopData(base), plan = await surfacePlan(fakeReq, job);
-    if (job.laptop) plan.template = (await templateFor(fakeReq, job.laptop)).template || plan.template;   // the full template, for drawing
+    if (plan.provisional) plan.template = plan.spec;   // no verified template: the provisional one from the manufacturer's size
+    else if (job.laptop) plan.template = (await templateFor(fakeReq, job.laptop)).template || plan.template;   // the full template, for drawing
     const abs = u => /^https?:/.test(u) ? u : base + u, cache = new Map();
     const assets = { pack: k => shop.PK[k], skinSrc: k => `/print/skins/${encodeURIComponent(k)}.jpg`,
       stickerSrc: c => /^XQV-/.test(c) ? `/free/${c}.webp` : shop.URL_[c] || `/hd/${encodeURIComponent(c)}.avif`,

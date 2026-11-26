@@ -239,7 +239,8 @@ export async function produce({ order: o, job, plan, base, settings = {}, assets
   const T = plan.template, skinPaths = [], skinPages = [], kbPages = [], kbPaths = [];
   for (const it of job.items.filter(i => i.surface)) {
     const sp = plan.surfaces[it.surface]; if (!sp || !sp.ready) { check(`${SN[it.surface]} template`, false, `${SN[it.surface]}: needs manual verification (${sp ? sp.why : 'no template'}). No file was generated.`, true); continue; }
-    const x = T.surfaces[it.surface]; check(`${SN[it.surface]} template`, true, `${plan.model.name} template v${T.version} (verified)`);
+    const x = T.surfaces[it.surface]; if (T.provisional) check(`${SN[it.surface]} template`, false, `${SN[it.surface]}: PROVISIONAL size ${x.w} x ${x.h} mm from the manufacturer's spec (${plan.model.name}), 2 mm in from each edge. Not measured: hold the cut line against the laptop before cutting`, true);
+    else check(`${SN[it.surface]} template`, true, `${plan.model.name} template v${T.version} (verified)`);
     let src, tr = null, name = it.design;
     if (it.design === 'customer-artwork') { const a = (o.design && o.design.art || []).find(a => a.surface === it.surface); if (!a) { check(`${SN[it.surface]} artwork`, false, 'Customer artwork missing from the order'); continue; } src = { buf: await assets.fetch(a.url) }; tr = a.t; name = 'customer-artwork'; }
     else if (/^s-/.test(it.design)) src = { color: { 's-black': '#121213', 's-white': '#f2f2f0', 's-sand': '#d8cbb6', 's-red': '#6e1a1f' }[it.design] || '#121213' };

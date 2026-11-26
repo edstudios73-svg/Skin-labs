@@ -33,6 +33,35 @@ function clean(t) {
         keys: Array.isArray(x.keyboard.keys) ? x.keyboard.keys.slice(0, 140).map(cleanShape) : [] } } : {}) }; }
   return out;
 }
+// Provisional template from the manufacturer's outer size, used ONLY while a laptop has no verified template, so the
+// printer still gets print-size artwork and cut lines. Every file made from it is marked 'provisional: check on the laptop'.
+export function genKeys(k) {   // same keyboard layout as the template editor (production page)
+  const u = +k.pitch || 18.5, g = +k.gap || 3, x0 = +k.x0 || 0, r = +k.radius || 1, fn = +k.fnH || 10, keys = []; let y = +k.y0 || 0;
+  const add = (label, x, yy, w, h) => keys.push({ type: 'key', label, x: +(x + g / 2).toFixed(2), y: +(yy + g / 2).toFixed(2), w: +(w - g).toFixed(2), h: +(h - g).toFixed(2), r });
+  const row = (spec, h) => { let x = x0; for (const [l, w] of spec) { if (l !== null) add(l, x, y, w * u, h); x += w * u; } y += h; };
+  const one = s => s.split(' ').map(l => [l, 1]);
+  row([['Esc', 1], ...Array.from({ length: 12 }, (_, i) => ['F' + (i + 1), 1]), ['Del', 1], ['Pwr', 1]], fn);
+  row([...one('` 1 2 3 4 5 6 7 8 9 0 - ='), ['Back', 2]], u);
+  row([['Tab', 1.5], ...one('Q W E R T Y U I O P [ ]'), ['\\', 1.5]], u);
+  row([['Caps', 1.75], ...one("A S D F G H J K L ; '"), ['Enter', 2.25]], u);
+  row([['Shift', 2.25], ...one('Z X C V B N M , . /'), ['Shift', 2.75]], u);
+  let x = x0; for (const [l, w] of [['Fn', 1], ['Ctrl', 1], ['Win', 1], ['Alt', 1], ['Space', 6], ['Alt', 1], ['Ctrl', 1]]) { add(l, x, y, w * u, u); x += w * u; }
+  add('←', x, y, u, u); add('↑', x + u, y, u, u / 2); add('↓', x + u, y + u / 2, u, u / 2); add('→', x + 2 * u, y, u, u);
+  return keys;
+}
+export function specTemplate(model) {
+  const W = +(model.w * 10).toFixed(1), D = +(model.d * 10).toFixed(1), m = 2, lw = +(W - 2 * m).toFixed(1), lh = +(D - 2 * m).toFixed(1), r = model.scr <= 14 ? 6 : 7;
+  const u = Math.min(18.8, +((lw - 16) / 15).toFixed(2)), kbW = 15 * u, x0 = +((lw - kbW) / 2).toFixed(2), y0 = 10, fnH = 9, kbH = fnH + 5 * u;
+  const pw = Math.round(Math.min(125, lw * .38)), ph = Math.round(Math.min(lh - (y0 + kbH) - 14, pw * .58)), py = +(y0 + kbH + Math.max(6, (lh - (y0 + kbH) - ph) / 2)).toFixed(1);
+  return { laptop: model.key, brand: model.brand, name: model.name, version: 0, status: 'provisional', provisional: true,
+    note: `Provisional: from the manufacturer's outer size ${W} x ${D} mm, 2 mm in from every edge. Not measured: check on the laptop before cutting.`,
+    surfaces: {
+      lid: { on: true, w: lw, h: lh, r, bleed: 2, offset: 0, cutouts: [] },
+      kb: { on: true, w: lw, h: lh, r, bleed: 2, offset: 0, cutouts: [{ type: 'rect', label: 'Trackpad', x: +((lw - pw) / 2).toFixed(1), y: py, w: pw, h: ph, r: 3 }],
+        keyboard: { layout: 'ANSI', pitch: u, gap: 3, x0, y0, fnH, radius: 1.2, keys: genKeys({ pitch: u, gap: 3, x0, y0, fnH, radius: 1.2 }) } },
+      pad: { on: true, w: pw - 2, h: ph - 2, r: 3, bleed: 1, offset: 0, cutouts: [] },
+      bot: { on: true, w: lw, h: lh, r, bleed: 2, offset: 0, cutouts: [] } } };
+}
 // everything that must be true before a template may be used for automatic cutting
 export function checkTemplate(t, model) {
   const errs = [], warn = [], S = t.surfaces || {};

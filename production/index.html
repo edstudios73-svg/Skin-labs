@@ -138,8 +138,9 @@ async function job(id) {
       ${(o.design && (o.design.art || []).length) || (o.design && o.design.mock) ? `<section class="card"><h2>Customer artwork</h2><div class="arts">${o.design.mock ? `<figure><img src="${esc(o.design.mock)}" alt="Laptop preview"><figcaption>Their laptop preview</figcaption></figure>` : ''}${(o.design.art || []).map(a => `<figure><img src="${esc(a.url)}" alt=""><figcaption>${esc(SURF[a.surface] || a.surface)} · ${a.w}×${a.h}px</figcaption></figure>`).join('')}</div></section>` : ''}
       <section class="card"><h2>Production dimensions</h2>${j.surfaces.length ? `${d.plan.model ? `<p class="lbl" style="margin-bottom:8px">${esc(d.plan.model.name)} · ${d.plan.template ? `template v${d.plan.template.version} · ${esc(d.plan.template.status)}` : 'no template yet'} · <a href="#tpl=${esc(d.plan.model.key)}">open template</a></p>` : ''}
         <table class="dims"><tr><th>Surface</th><th>Size</th><th>Cutouts / keys</th><th>Status</th></tr>${j.surfaces.map(s => { const x = d.plan.surfaces[s] || {}; return x.ready
-          ? `<tr><td>${SURF[s]}</td><td>${x.w} × ${x.h} mm · r${x.r} · bleed ${x.bleed}</td><td>${x.cutouts}${x.keys ? ` · ${x.keys} keys` : ''}</td><td style="color:var(--ok)">Verified template</td></tr>`
+          ? `<tr><td>${SURF[s]}</td><td>${x.w} × ${x.h} mm · r${x.r} · bleed ${x.bleed}</td><td>${x.cutouts}${x.keys ? ` · ${x.keys} keys` : ''}</td><td style="color:${x.provisional ? 'var(--warn)' : 'var(--ok)'}">${x.provisional ? 'Provisional · from the maker’s size<br><small style="color:var(--mute)">Check on the laptop before cutting</small>' : 'Verified template'}</td></tr>`
           : `<tr><td>${SURF[s]}</td><td>—</td><td>—</td><td style="color:var(--warn)">Needs manual verification<br><small style="color:var(--mute)">${esc(x.why || '')}</small></td></tr>`; }).join('')}</table>
+        ${d.plan.provisional ? `<div class="note">Files are made from <b>${esc(d.plan.model.name)}</b>'s official size (${(d.plan.model.w * 10).toFixed(1)} × ${(d.plan.model.d * 10).toFixed(1)} mm), 2 mm in from every edge, with a standard keyboard layout. Print at 100%. Before cutting, hold the printed cut line against the laptop. Once the laptop is measured and its template verified, files use that instead.</div>` : ''}
         ${Object.values(d.plan.surfaces).some(x => !x.ready) ? '<div class="note">No automatic cutting file is made for a surface without a verified template. Measure the laptop and verify its template first.</div>' : ''}` : '<p class="sub" style="margin:0">Stickers only: sheet sizes come from the products.</p>'}</section>
     </div><div>
       <section class="card"><h2>Production files</h2>
@@ -256,7 +257,7 @@ async function tpl(key) {
 }
 // downloads: a fresh signed link each time. On a computer the file is streamed and its size + SHA-256 are checked;
 // on phones (or if that fails for any reason) the browser downloads the signed link itself, which works everywhere.
-const DLS = [['General order PNG', /^01-/], ['Transparent sheet (PNG)', /^03-STICKER-ARTWORK-TRANSPARENT\//], ['Sticker cutlines (PDF)', /^04-/], ['Laptop skin cutlines (PDF)', /^07-/], ['Keyboard cutlines (PDF)', /^10-/], ['Production instructions', /^14-/]];
+const DLS = [['General order PNG', /^01-/], ['Transparent sheet (PNG)', /^03-STICKER-ARTWORK-TRANSPARENT\//], ['Sticker cutlines (PDF)', /^04-/], ['Lid skin artwork (PNG)', /^06-[^/]*\/lid-/], ['Laptop skin cutlines (PDF)', /^07-/], ['Keyboard deck artwork (PNG)', /^09-KEYBOARD-ARTWORK\/keyboard-deck/], ['Keyboard cutlines (PDF)', /^10-/], ['Production instructions', /^14-/]];
 const MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform));
 function nativeDl(d) { const a = Object.assign(document.createElement('a'), { href: d.url, download: d.name, rel: 'noopener' }); document.body.appendChild(a); a.click(); a.remove(); }
 async function download(id, name, btn) {
