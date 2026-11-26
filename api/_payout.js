@@ -46,6 +46,8 @@ export async function savePayoutSettings(b, by) {
     enabled: !!b.enabled, by, at: Date.now() };
   if (set.enabled && !cur.enabled) set.enabledAt = Date.now();   // only orders paid from now on are paid automatically
   if (set.name && set.network && set.number) await recipient(set);   // checks the details with Paystack straight away
+  if (set.number && set.network && (!set.verifiedName || set.verifiedFor !== `${set.network}:${set.number}`)) {   // the name the network has for this number, shown to the owner before switching on
+    const r = await paystack(`/bank/resolve?account_number=${encodeURIComponent(set.number)}&bank_code=${encodeURIComponent(set.network)}`).catch(() => null); if (r && r.account_name) { set.verifiedName = r.account_name; set.verifiedFor = `${set.network}:${set.number}`; } }
   await saveDoc(DIR(), set); return set;
 }
 
